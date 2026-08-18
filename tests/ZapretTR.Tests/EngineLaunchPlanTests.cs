@@ -25,8 +25,9 @@ public sealed class EngineLaunchPlanTests
 
         var missing = plan.FindMissingFiles();
 
-        Assert.Equal(3, missing.Count);
+        Assert.Equal(6, missing.Count);
         Assert.Contains(missing, path => path.EndsWith("winws2.exe", StringComparison.Ordinal));
+        Assert.Contains(missing, path => path.EndsWith("cygwin1.dll", StringComparison.Ordinal));
     }
 
     private static ZapretProfile CreateProfile(params string[] arguments) => new()

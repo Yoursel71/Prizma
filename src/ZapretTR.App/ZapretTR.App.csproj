@@ -19,9 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\..\profiles\tr\*.json" Link="profiles\tr\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\lua\*.lua" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\artifacts\engine\windows-x64\*" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\artifacts\engine\windows-x64')" />
+    <Content Include="..\..\profiles\tr\*.json" Link="profiles\tr\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\lua\*.lua" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\artifacts\engine\windows-x64\*" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" Condition="Exists('..\..\artifacts\engine\windows-x64')" />
   </ItemGroup>
 
 </Project>

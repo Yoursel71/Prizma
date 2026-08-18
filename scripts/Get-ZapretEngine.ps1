@@ -40,7 +40,7 @@ try {
 
     $windowsEngine = Join-Path $bundleRoot.FullName 'binaries\windows-x86_64'
     $licensePath = Join-Path $bundleRoot.FullName 'docs\LICENSE.txt'
-    $requiredFiles = @('winws2.exe', 'WinDivert.dll', 'WinDivert64.sys')
+    $requiredFiles = @('winws2.exe', 'cygwin1.dll', 'WinDivert.dll', 'WinDivert64.sys')
 
     foreach ($fileName in $requiredFiles) {
         $source = Join-Path $windowsEngine $fileName

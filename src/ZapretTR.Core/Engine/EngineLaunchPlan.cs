@@ -5,6 +5,13 @@ namespace ZapretTR.Core.Engine;
 
 public sealed record EngineLaunchPlan(string ExecutablePath, string WorkingDirectory, IReadOnlyList<string> Arguments)
 {
+    private static readonly string[] RuntimeDependencies =
+    [
+        "cygwin1.dll",
+        "WinDivert.dll",
+        "WinDivert64.sys"
+    ];
+
     private static readonly string[] BootstrapArguments =
     [
         "--lua-init=@zapret-lib.lua",
@@ -29,6 +36,15 @@ public sealed record EngineLaunchPlan(string ExecutablePath, string WorkingDirec
         if (!File.Exists(ExecutablePath))
         {
             missing.Add(ExecutablePath);
+        }
+
+        foreach (var fileName in RuntimeDependencies)
+        {
+            var path = Path.Combine(WorkingDirectory, fileName);
+            if (!File.Exists(path))
+            {
+                missing.Add(path);
+            }
         }
 
         foreach (var argument in Arguments.Where(value => value.StartsWith("--lua-init=@", StringComparison.Ordinal)))
