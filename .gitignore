@@ -12,3 +12,8 @@ ipset/zapret-ip*.gz
 ipset/zapret-hosts*.txt
 ipset/zapret-hosts*.gz
 .vscode/
+.tools/
+artifacts/
+**/bin/
+**/obj/
+*.user
