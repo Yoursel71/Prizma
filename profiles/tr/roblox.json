@@ -1,0 +1,15 @@
+{
+  "id": "tr-roblox",
+  "name": "Türkiye • Roblox",
+  "description": "Yalnız Roblox ve içerik alan adlarında 1+midsld ters bölme ile TTL=5 sahte ClientHello uygular; diğer web trafiğine dokunmaz.",
+  "badge": "Roblox • Hedefli",
+  "risk": "Low",
+  "recommended": false,
+  "arguments": [
+    "--strategy", "direct",
+    "--fake-ttl", "5",
+    "--host-suffix", "roblox.com,rbxcdn.com,rbx.com",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "tr-compatibility",
+  "name": "Türkiye • Uyumluluk",
+  "description": "TLS'i SNI başlangıcından normal sırada böler; sahte paket ve QUIC engeli kullanmaz. Bazı CDN'ler etkilenirse deneyin.",
+  "badge": "Düşük müdahale",
+  "risk": "Low",
+  "recommended": false,
+  "arguments": [
+    "--strategy", "compatibility",
+    "--no-fake",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
+  ]
+}

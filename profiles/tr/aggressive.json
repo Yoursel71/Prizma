@@ -1,0 +1,14 @@
+{
+  "id": "tr-aggressive",
+  "name": "Türkiye • Güçlü",
+  "description": "1+midsld ters bölme ve TTL=5 sahtesine ek olarak QUIC/HTTP3'ü kapatıp tarayıcıyı işlenebilen TCP/TLS'e düşürür.",
+  "badge": "Güçlü",
+  "risk": "High",
+  "recommended": false,
+  "arguments": [
+    "--strategy", "turkey-strong",
+    "--fake-ttl", "5",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
+  ]
+}
