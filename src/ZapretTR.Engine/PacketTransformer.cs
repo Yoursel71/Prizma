@@ -34,6 +34,42 @@ public static class PacketTransformer
         return true;
     }
 
+    public static string? GetApplicationHost(ReadOnlySpan<byte> packet, PacketLayout layout)
+    {
+        var payload = packet.Slice(layout.PayloadOffset, layout.PayloadLength);
+        if (IsTlsClientHello(packet, layout) && TryFindTlsSni(payload, out var offset, out var length))
+        {
+            return Encoding.ASCII.GetString(payload.Slice(offset, length)).ToLowerInvariant();
+        }
+
+        if (layout.Protocol == PacketLayout.TcpProtocol && layout.DestinationPort == 80)
+        {
+            var hostHeader = payload.IndexOf(HostHeader);
+            if (hostHeader >= 0)
+            {
+                var start = hostHeader + HostHeader.Length;
+                var end = payload[start..].IndexOf("\r\n"u8);
+                if (end > 0) return Encoding.ASCII.GetString(payload.Slice(start, end)).Trim().ToLowerInvariant();
+            }
+        }
+        return null;
+    }
+
+    public static int? ResolveTlsSplitMarker(ReadOnlySpan<byte> packet, PacketLayout layout, TlsSplitMarker marker)
+    {
+        if (marker == TlsSplitMarker.None || !IsTlsClientHello(packet, layout)) return null;
+        var payload = packet.Slice(layout.PayloadOffset, layout.PayloadLength);
+        if (!TryFindTlsSni(payload, out var hostOffset, out var hostLength)) return null;
+        if (marker == TlsSplitMarker.SniStart) return hostOffset;
+
+        var host = payload.Slice(hostOffset, hostLength);
+        var lastDot = host.LastIndexOf((byte)'.');
+        var labelEnd = lastDot > 0 ? lastDot : host.Length;
+        var previousDot = host[..labelEnd].LastIndexOf((byte)'.');
+        var labelStart = previousDot >= 0 ? previousDot + 1 : 0;
+        return hostOffset + labelStart + Math.Max(1, (labelEnd - labelStart) / 2);
+    }
+
     public static byte[]? CreateFakeTlsPacket(ReadOnlySpan<byte> packet, PacketLayout layout, byte ttl)
     {
         if (!IsTlsClientHello(packet, layout) || layout.PayloadLength > 1200)
@@ -57,31 +93,38 @@ public static class PacketTransformer
     }
 
     public static IReadOnlyList<byte[]> SplitTcpPacket(ReadOnlySpan<byte> packet, PacketLayout layout, int splitPosition, bool reverse)
+        => SplitTcpPacket(packet, layout, [splitPosition], reverse);
+
+    public static IReadOnlyList<byte[]> SplitTcpPacket(ReadOnlySpan<byte> packet, PacketLayout layout,
+        IReadOnlyList<int> splitPositions, bool reverse)
     {
-        if (layout.Protocol != PacketLayout.TcpProtocol || splitPosition <= 0 || splitPosition >= layout.PayloadLength)
+        var positions = splitPositions.Where(position => position > 0 && position < layout.PayloadLength)
+            .Distinct().Order().ToArray();
+        if (layout.Protocol != PacketLayout.TcpProtocol || positions.Length == 0)
         {
             return [packet.ToArray()];
         }
 
-        var first = new byte[layout.PayloadOffset + splitPosition];
-        var secondPayloadLength = layout.PayloadLength - splitPosition;
-        var second = new byte[layout.PayloadOffset + secondPayloadLength];
-        packet.Slice(0, layout.PayloadOffset).CopyTo(first);
-        packet.Slice(0, layout.PayloadOffset).CopyTo(second);
-        packet.Slice(layout.PayloadOffset, splitPosition).CopyTo(first.AsSpan(layout.PayloadOffset));
-        packet.Slice(layout.PayloadOffset + splitPosition, secondPayloadLength).CopyTo(second.AsSpan(layout.PayloadOffset));
-
-        SetIpv4Length(first, first.Length);
-        SetIpv4Length(second, second.Length);
-
         var sequenceOffset = layout.TransportHeaderOffset + 4;
         var originalSequence = BinaryPrimitives.ReadUInt32BigEndian(packet.Slice(sequenceOffset, 4));
-        BinaryPrimitives.WriteUInt32BigEndian(second.AsSpan(sequenceOffset, 4), originalSequence + checked((uint)splitPosition));
-
         var flagsOffset = layout.TransportHeaderOffset + 13;
-        first[flagsOffset] = (byte)(first[flagsOffset] & ~(0x01 | 0x08));
+        var fragments = new List<byte[]>(positions.Length + 1);
+        var start = 0;
+        foreach (var end in positions.Append(layout.PayloadLength))
+        {
+            var payloadLength = end - start;
+            var fragment = new byte[layout.PayloadOffset + payloadLength];
+            packet[..layout.PayloadOffset].CopyTo(fragment);
+            packet.Slice(layout.PayloadOffset + start, payloadLength).CopyTo(fragment.AsSpan(layout.PayloadOffset));
+            SetIpv4Length(fragment, fragment.Length);
+            BinaryPrimitives.WriteUInt32BigEndian(fragment.AsSpan(sequenceOffset, 4), originalSequence + checked((uint)start));
+            if (end != layout.PayloadLength) fragment[flagsOffset] = (byte)(fragment[flagsOffset] & ~(0x01 | 0x08));
+            fragments.Add(fragment);
+            start = end;
+        }
 
-        return reverse ? [second, first] : [first, second];
+        if (reverse) fragments.Reverse();
+        return fragments;
     }
 
     public static ushort ReadDnsId(ReadOnlySpan<byte> packet, PacketLayout layout) =>

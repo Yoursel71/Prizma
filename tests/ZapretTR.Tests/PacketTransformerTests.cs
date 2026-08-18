@@ -48,6 +48,34 @@ public sealed class PacketTransformerTests
         Assert.Contains(".com", Encoding.ASCII.GetString(fake));
     }
 
+    [Fact]
+    public void ResolveTlsSplitMarker_FindsMiddleOfSecondLevelDomain()
+    {
+        var packet = CreateTcpPacket(443, CreateClientHello("www.roblox.com"));
+        Assert.True(PacketLayout.TryParse(packet, out var layout));
+
+        var position = PacketTransformer.ResolveTlsSplitMarker(packet, layout, TlsSplitMarker.SniMiddle);
+
+        Assert.NotNull(position);
+        var payload = packet.AsSpan(layout.PayloadOffset, layout.PayloadLength);
+        Assert.Equal((byte)'l', payload[position!.Value]);
+        Assert.Equal("www.roblox.com", PacketTransformer.GetApplicationHost(packet, layout));
+    }
+
+    [Fact]
+    public void SplitTcpPacket_SupportsMultipleNormalizedPositions()
+    {
+        var packet = CreateTcpPacket(443, Enumerable.Range(0, 12).Select(value => (byte)value).ToArray());
+        Assert.True(PacketLayout.TryParse(packet, out var layout));
+
+        var fragments = PacketTransformer.SplitTcpPacket(packet, layout, [7, 1, 7], reverse: true);
+
+        Assert.Equal(3, fragments.Count);
+        Assert.Equal(1007u, BinaryPrimitives.ReadUInt32BigEndian(fragments[0].AsSpan(24, 4)));
+        Assert.Equal(1001u, BinaryPrimitives.ReadUInt32BigEndian(fragments[1].AsSpan(24, 4)));
+        Assert.Equal(1000u, BinaryPrimitives.ReadUInt32BigEndian(fragments[2].AsSpan(24, 4)));
+    }
+
     private static byte[] CreateTcpPacket(ushort destinationPort, byte[] payload)
     {
         var packet = new byte[40 + payload.Length];

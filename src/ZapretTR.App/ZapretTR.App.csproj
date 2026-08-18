@@ -13,7 +13,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>ZapretTR</AssemblyName>
     <RootNamespace>ZapretTR.App</RootNamespace>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>ZapretTR contributors</Authors>
     <Description>Türkiye için birleşik ZapretTR paket işleme arayüzü</Description>
   </PropertyGroup>

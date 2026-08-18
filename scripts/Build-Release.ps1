@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.3.0'
+    [string]$Version = '0.4.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -67,6 +67,10 @@ try {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'NOTICE.md') -Destination (Join-Path $licenseDirectory 'NOTICE.md')
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt') -Destination $licenseDirectory
 
+    foreach ($installer in @('Install-ZapretTR.ps1', 'Uninstall-ZapretTR.ps1', 'Kur.cmd', 'Kaldir.cmd')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $installer) -Destination (Join-Path $stagingDirectory $installer)
+    }
+
     $requiredOutputs = @(
         'ZapretTR.exe',
         'engine\ZapretTR.Engine.exe',
@@ -76,7 +80,9 @@ try {
         'licenses\LICENSE-ZapretTR-MIT.txt',
         'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt',
         'licenses\NOTICE.md',
-        'profiles\tr\balanced.json'
+        'profiles\tr\balanced.json',
+        'Kur.cmd',
+        'Kaldir.cmd'
     )
     foreach ($relativePath in $requiredOutputs) {
         if (-not (Test-Path -LiteralPath (Join-Path $stagingDirectory $relativePath))) {

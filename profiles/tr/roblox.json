@@ -1,12 +1,15 @@
 {
   "id": "tr-roblox",
   "name": "Türkiye • Roblox",
-  "description": "Roblox web ve TLS erişimi için sade ters-bölme profili. DNS'i kullanıcıya bırakır; diğer HTTPS trafiğinde de aynı stratejiyi uygular.",
-  "badge": "Roblox • DNS'siz",
+  "description": "Yalnız Roblox ve içerik alan adlarında 1+midsld ters bölme ile TTL=5 sahte ClientHello uygular; diğer web trafiğine dokunmaz.",
+  "badge": "Roblox • Hedefli",
   "risk": "Low",
   "recommended": false,
   "arguments": [
     "--strategy", "direct",
-    "--fake-ttl", "5"
+    "--fake-ttl", "5",
+    "--host-suffix", "roblox.com,rbxcdn.com,rbx.com",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
   ]
 }

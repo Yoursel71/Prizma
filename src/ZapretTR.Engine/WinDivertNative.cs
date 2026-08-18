@@ -44,5 +44,9 @@ internal static unsafe partial class WinDivertNative
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool Close(nint handle);
 
-    internal static Win32Exception LastError(string operation) => new(Marshal.GetLastWin32Error(), operation);
+    internal static Win32Exception LastError(string operation)
+    {
+        var error = Marshal.GetLastWin32Error();
+        return new Win32Exception(error, $"{operation} (Win32 {error}: {new Win32Exception(error).Message})");
+    }
 }

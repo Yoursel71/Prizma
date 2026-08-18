@@ -6,21 +6,28 @@ using ZapretTR.App.Infrastructure;
 using ZapretTR.Core.Engine;
 using ZapretTR.Core.Models;
 using ZapretTR.Core.Profiles;
+using ZapretTR.Core.Services;
 
 namespace ZapretTR.App.ViewModels;
 
 public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 {
     private readonly UnifiedEngineController _engine;
+    private readonly WindowsServiceManager _serviceManager = new();
     private ZapretProfile? _selectedProfile;
     private string _stateTitle = "Hazır";
     private string _stateDescription = "Bir profil seçip korumayı başlatabilirsin.";
     private string _actionLabel = "Başlat";
-    private string _powerGlyph = "⌁";
+    private string _powerGlyph = "⏻";
     private string _healthTitle = "Motor kontrol ediliyor";
     private string _healthDescription = "Gerekli dosyaların durumuna bakılıyor.";
     private bool _canToggle;
     private bool _canSelectProfile = true;
+    private EngineState _currentState;
+    private WindowsServiceState _serviceState = WindowsServiceState.NotInstalled;
+    private string _serviceStatusText = "Windows ile otomatik başlat";
+    private string _serviceActionLabel = "Hizmet olarak kur";
+    private bool _canManageService = true;
 
     public MainWindowViewModel()
     {
@@ -33,6 +40,8 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         Profiles = new ObservableCollection<ZapretProfile>();
         RecentLogs = new ObservableCollection<string>();
         ToggleCommand = new AsyncRelayCommand(ToggleAsync, () => CanToggle);
+        ManageServiceCommand = new AsyncRelayCommand(ManageServiceAsync, () => CanManageService);
+        DownloadCommand = new AsyncRelayCommand(OpenDownloadAsync);
         try
         {
             foreach (var profile in new ProfileCatalog().Load(profileDirectory))
@@ -47,11 +56,14 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 
         SelectedProfile = Profiles.FirstOrDefault(profile => profile.Recommended) ?? Profiles.FirstOrDefault();
         ApplyState(_engine.State);
+        _ = RefreshServiceStateAsync();
     }
 
     public ObservableCollection<ZapretProfile> Profiles { get; }
     public ObservableCollection<string> RecentLogs { get; }
     public AsyncRelayCommand ToggleCommand { get; }
+    public AsyncRelayCommand ManageServiceCommand { get; }
+    public AsyncRelayCommand DownloadCommand { get; }
 
     public ZapretProfile? SelectedProfile
     {
@@ -71,6 +83,27 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     public string PowerGlyph { get => _powerGlyph; private set => SetProperty(ref _powerGlyph, value); }
     public string HealthTitle { get => _healthTitle; private set => SetProperty(ref _healthTitle, value); }
     public string HealthDescription { get => _healthDescription; private set => SetProperty(ref _healthDescription, value); }
+    public string ServiceStatusText { get => _serviceStatusText; private set => SetProperty(ref _serviceStatusText, value); }
+    public string ServiceActionLabel { get => _serviceActionLabel; private set => SetProperty(ref _serviceActionLabel, value); }
+    public bool IsServiceInstalled => _serviceState != WindowsServiceState.NotInstalled;
+    public bool CanManageService
+    {
+        get => _canManageService;
+        private set
+        {
+            if (SetProperty(ref _canManageService, value)) ManageServiceCommand.RaiseCanExecuteChanged();
+        }
+    }
+    public bool IsRunning => _serviceState == WindowsServiceState.Running || _currentState == EngineState.Running;
+    public string StatusChipText => _serviceState == WindowsServiceState.Running ? "HİZMET AKTİF" : _currentState switch
+    {
+        EngineState.Running => "KORUMA AKTİF",
+        EngineState.Starting => "MOTOR HAZIRLANIYOR",
+        EngineState.Stopping => "MOTOR DURDURULUYOR",
+        EngineState.Missing => "MOTOR EKSİK",
+        EngineState.Faulted => "DİKKAT GEREKLİ",
+        _ => "KORUMA KAPALI"
+    };
 
     public bool CanSelectProfile
     {
@@ -126,8 +159,89 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+    private async Task ManageServiceAsync()
+    {
+        CanManageService = false;
+        try
+        {
+            if (_serviceState == WindowsServiceState.NotInstalled)
+            {
+                if (SelectedProfile is null) return;
+                if (_engine.State == EngineState.Running) await _engine.StopAsync();
+                AddLog($"{SelectedProfile.Name} Windows hizmeti olarak kuruluyor…");
+                await _serviceManager.InstallAsync(Path.Combine(AppContext.BaseDirectory, "engine"), SelectedProfile);
+                AddLog("Hizmet kuruldu; Windows ile otomatik başlayacak.");
+            }
+            else
+            {
+                AddLog("ZapretTR hizmeti kaldırılıyor…");
+                await _serviceManager.UninstallAsync();
+                AddLog("Hizmet kaldırıldı. Kurulu motor dosyaları güvenli biçimde bırakıldı.");
+            }
+        }
+        catch (Exception exception)
+        {
+            AddLog("Hizmet hatası: " + exception.Message);
+            HealthTitle = "Hizmet işlemi başarısız";
+            HealthDescription = exception.Message;
+        }
+        finally
+        {
+            await RefreshServiceStateAsync();
+            CanManageService = true;
+        }
+    }
+
+    private static Task OpenDownloadAsync()
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "https://github.com/Yoursel71/ZapretTR/releases/latest",
+            UseShellExecute = true
+        });
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshServiceStateAsync()
+    {
+        try
+        {
+            _serviceState = await _serviceManager.GetStateAsync();
+            ServiceStatusText = _serviceState switch
+            {
+                WindowsServiceState.Running => "Windows açılışında aktif · Çalışıyor",
+                WindowsServiceState.Stopped => "Kurulu · Şu anda durmuş",
+                _ => "Windows ile otomatik başlat"
+            };
+            ServiceActionLabel = _serviceState == WindowsServiceState.NotInstalled ? "Hizmet olarak kur" : "Hizmeti kaldır";
+            OnPropertyChanged(nameof(IsServiceInstalled));
+            ApplyState(_engine.State);
+        }
+        catch (Exception exception)
+        {
+            AddLog("Hizmet durumu okunamadı: " + exception.Message);
+        }
+    }
+
     private void ApplyState(EngineState state)
     {
+        _currentState = state;
+        if (_serviceState != WindowsServiceState.NotInstalled)
+        {
+            StateTitle = _serviceState == WindowsServiceState.Running ? "Her zaman açık" : "Hizmet bekliyor";
+            StateDescription = _serviceState == WindowsServiceState.Running
+                ? "Koruma arayüz kapalıyken de Windows hizmeti olarak çalışıyor."
+                : "Hizmet kurulu ancak çalışmıyor; kaldırıp seçili profille yeniden kurabilirsin.";
+            ActionLabel = "Hizmet modu";
+            PowerGlyph = _serviceState == WindowsServiceState.Running ? "✓" : "!";
+            HealthTitle = _serviceState == WindowsServiceState.Running ? "Arka planda korunuyor" : "Hizmet durmuş";
+            HealthDescription = ServiceStatusText;
+            CanToggle = false;
+            CanSelectProfile = false;
+            OnPropertyChanged(nameof(IsRunning));
+            OnPropertyChanged(nameof(StatusChipText));
+            return;
+        }
         switch (state)
         {
             case EngineState.Missing:
@@ -178,13 +292,16 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
                 StateTitle = "Koruma kapalı";
                 StateDescription = "Bağlantı şu anda değiştirilmeden çalışıyor.";
                 ActionLabel = "Başlat";
-                PowerGlyph = "⌁";
+                PowerGlyph = "⏻";
                 HealthTitle = "Hazır";
                 HealthDescription = "ZapretTR.Engine ve WinDivert kullanılabilir.";
                 CanToggle = SelectedProfile is not null;
                 CanSelectProfile = true;
                 break;
         }
+
+        OnPropertyChanged(nameof(IsRunning));
+        OnPropertyChanged(nameof(StatusChipText));
     }
 
     private static string? FindExternalEngineProcess()

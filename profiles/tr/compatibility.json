@@ -1,7 +1,7 @@
 {
   "id": "tr-compatibility",
   "name": "Türkiye • Uyumluluk",
-  "description": "TLS parçalarını normal sırada gönderir ve sahte paket kullanmaz. Standart profil bazı siteleri etkilerse deneyin.",
+  "description": "TLS'i SNI başlangıcından normal sırada böler; sahte paket ve QUIC engeli kullanmaz. Bazı CDN'ler etkilenirse deneyin.",
   "badge": "Düşük müdahale",
   "risk": "Low",
   "recommended": false,

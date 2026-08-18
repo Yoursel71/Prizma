@@ -1,7 +1,7 @@
 {
   "id": "tr-balanced",
   "name": "Türkiye • Dengeli",
-  "description": "TLS ve HTTP paketlerini iki bayttan bölüp ters sırada gönderir; düşük TTL sahte paket ve süreç içi DNS yönlendirmesi uygular.",
+  "description": "TLS'i ilk bayt ve alan adının ortasından bölüp parçaları ters yollar; TTL=5 sahte ClientHello ve süreç içi DNS yönlendirmesi uygular.",
   "badge": "Önerilen • Türkiye",
   "risk": "Low",
   "recommended": true,

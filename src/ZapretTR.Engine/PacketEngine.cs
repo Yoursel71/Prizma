@@ -22,7 +22,7 @@ public sealed unsafe class PacketEngine : IDisposable
         }
 
         using var registration = cancellationToken.Register(StopReceiving);
-        Console.WriteLine($"ZapretTR.Engine hazır • TLS split={_options.TlsSplitPosition} • reverse={_options.ReverseFragments} • DNS={_options.DnsAddress?.ToString() ?? "kapalı"}");
+        Console.WriteLine($"ZapretTR.Engine hazır • TLS split={string.Join(',', _options.SplitPositions)}+{_options.TlsSplitMarker} • reverse={_options.ReverseFragments} • QUIC={(_options.BlockQuic ? "kapalı" : "açık")} • DNS={_options.DnsAddress?.ToString() ?? "kapalı"}");
         var receiveBuffer = new byte[ushort.MaxValue + 40];
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -75,17 +75,35 @@ public sealed unsafe class PacketEngine : IDisposable
             return;
         }
 
+
+        if (address.Outbound && _options.BlockQuic && layout.Protocol == PacketLayout.UdpProtocol && layout.DestinationPort == 443)
+        {
+            return; // HTTP/3'ü TCP/TLS'e düşür; yalnız bu seçeneği açık profillerde uygulanır.
+        }
+
         if (address.Outbound && layout.Protocol == PacketLayout.TcpProtocol)
         {
-            var modified = _options.RewriteHttpHost && PacketTransformer.RewriteHttpHost(packet, layout);
-            if (PacketTransformer.IsTlsClientHello(packet, layout) || modified)
+            var host = PacketTransformer.GetApplicationHost(packet, layout);
+            if (_options.HostSuffixes.Count > 0 && (host is null || !_options.HostSuffixes.Any(suffix =>
+                    host.Equals(suffix, StringComparison.OrdinalIgnoreCase) || host.EndsWith('.' + suffix, StringComparison.OrdinalIgnoreCase))))
             {
-                if (_options.FakeTtl is { } fakeTtl && PacketTransformer.CreateFakeTlsPacket(packet, layout, fakeTtl) is { } fake)
+                Send(packet, address);
+                return;
+            }
+
+            var isTls = PacketTransformer.IsTlsClientHello(packet, layout);
+            var modified = _options.RewriteHttpHost && PacketTransformer.RewriteHttpHost(packet, layout);
+            if (isTls || modified)
+            {
+                if (isTls && _options.FakeTtl is { } fakeTtl && PacketTransformer.CreateFakeTlsPacket(packet, layout, fakeTtl) is { } fake)
                 {
                     Send(fake, address);
                 }
 
-                foreach (var fragment in PacketTransformer.SplitTcpPacket(packet, layout, _options.TlsSplitPosition, _options.ReverseFragments))
+                var positions = _options.SplitPositions.ToList();
+                var marker = PacketTransformer.ResolveTlsSplitMarker(packet, layout, _options.TlsSplitMarker);
+                if (marker is { } markerPosition) positions.Add(markerPosition);
+                foreach (var fragment in PacketTransformer.SplitTcpPacket(packet, layout, positions, _options.ReverseFragments))
                 {
                     Send(fragment, address);
                 }
@@ -135,6 +153,11 @@ public sealed unsafe class PacketEngine : IDisposable
         if (options.DnsAddress is not null)
         {
             clauses.Add($"(!impostor and !loopback and ip and udp and ((outbound and udp.DstPort == 53) or (inbound and udp.SrcPort == {options.DnsPort})))");
+        }
+
+        if (options.BlockQuic)
+        {
+            clauses.Add("(!impostor and !loopback and outbound and ip and udp and udp.DstPort == 443)");
         }
 
         return string.Join(" or ", clauses);
