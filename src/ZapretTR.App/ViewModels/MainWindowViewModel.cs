@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using ZapretTR.App.Infrastructure;
@@ -10,26 +11,28 @@ namespace ZapretTR.App.ViewModels;
 
 public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 {
-    private readonly EngineController _engine;
+    private readonly UnifiedEngineController _engine;
     private ZapretProfile? _selectedProfile;
     private string _stateTitle = "Hazır";
     private string _stateDescription = "Bir profil seçip korumayı başlatabilirsin.";
-    private string _actionLabel = "Korumayı Başlat";
+    private string _actionLabel = "Başlat";
     private string _powerGlyph = "⌁";
     private string _healthTitle = "Motor kontrol ediliyor";
     private string _healthDescription = "Gerekli dosyaların durumuna bakılıyor.";
     private bool _canToggle;
+    private bool _canSelectProfile = true;
 
     public MainWindowViewModel()
     {
         var baseDirectory = AppContext.BaseDirectory;
         var profileDirectory = Path.Combine(baseDirectory, "profiles", "tr");
-        var engineDirectory = Path.Combine(baseDirectory, "engine");
+        _engine = new UnifiedEngineController(Path.Combine(baseDirectory, "engine"));
+        _engine.StateChanged += state => Application.Current.Dispatcher.Invoke(() => ApplyState(state));
+        _engine.LogReceived += line => Application.Current.Dispatcher.Invoke(() => AddLog(line));
 
         Profiles = new ObservableCollection<ZapretProfile>();
         RecentLogs = new ObservableCollection<string>();
         ToggleCommand = new AsyncRelayCommand(ToggleAsync, () => CanToggle);
-
         try
         {
             foreach (var profile in new ProfileCatalog().Load(profileDirectory))
@@ -43,9 +46,6 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
 
         SelectedProfile = Profiles.FirstOrDefault(profile => profile.Recommended) ?? Profiles.FirstOrDefault();
-        _engine = new EngineController(engineDirectory);
-        _engine.StateChanged += state => Application.Current.Dispatcher.Invoke(() => ApplyState(state));
-        _engine.LogReceived += line => Application.Current.Dispatcher.Invoke(() => AddLog(line));
         ApplyState(_engine.State);
     }
 
@@ -58,7 +58,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         get => _selectedProfile;
         set
         {
-            if (SetProperty(ref _selectedProfile, value) && _engine is not null)
+            if (SetProperty(ref _selectedProfile, value))
             {
                 ApplyState(_engine.State);
             }
@@ -71,7 +71,12 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     public string PowerGlyph { get => _powerGlyph; private set => SetProperty(ref _powerGlyph, value); }
     public string HealthTitle { get => _healthTitle; private set => SetProperty(ref _healthTitle, value); }
     public string HealthDescription { get => _healthDescription; private set => SetProperty(ref _healthDescription, value); }
-    public string EngineVersionText => _engine.State == EngineState.Missing ? "Dosyalar eksik" : "Motor hazır";
+
+    public bool CanSelectProfile
+    {
+        get => _canSelectProfile;
+        private set => SetProperty(ref _canSelectProfile, value);
+    }
 
     public bool CanToggle
     {
@@ -95,13 +100,23 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
             {
                 await _engine.StopAsync();
                 AddLog("Koruma durduruldu.");
+                return;
             }
-            else if (SelectedProfile is not null)
+
+            if (SelectedProfile is null)
             {
-                AddLog($"{SelectedProfile.Name} profili başlatılıyor…");
-                await _engine.StartAsync(SelectedProfile);
-                AddLog("Koruma etkin.");
+                return;
             }
+
+            var conflictingProcess = FindExternalEngineProcess();
+            if (conflictingProcess is not null)
+            {
+                throw new InvalidOperationException($"{conflictingProcess} zaten çalışıyor. Önce diğer DPI aracını kapatın.");
+            }
+
+            AddLog($"{SelectedProfile.Name} başlatılıyor…");
+            await _engine.StartAsync(SelectedProfile);
+            AddLog("Birleşik koruma etkin.");
         }
         catch (Exception exception)
         {
@@ -116,56 +131,84 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         switch (state)
         {
             case EngineState.Missing:
-                StateTitle = "Motor bekleniyor";
-                StateDescription = "winws2 paketi bulunamadı. Derleme betiği motoru doğrulayarak ekleyecek.";
-                ActionLabel = "Motor Eksik";
+                StateTitle = "Motor eksik";
+                StateDescription = "ZapretTR.Engine veya WinDivert dosyaları bulunamadı.";
+                ActionLabel = "Motor eksik";
                 PowerGlyph = "!";
-                HealthTitle = "Motor dosyaları eksik";
-                HealthDescription = "Paketleme adımını çalıştırın veya doğrulanmış zapret2 motorunu engine klasörüne ekleyin.";
+                HealthTitle = "Derleme gerekli";
+                HealthDescription = "Release betiği uygulamanın birleşik motorunu ve WinDivert sürücüsünü ekler.";
                 CanToggle = false;
+                CanSelectProfile = true;
                 break;
             case EngineState.Running:
                 StateTitle = "Koruma açık";
-                StateDescription = $"{SelectedProfile?.Name ?? "Seçili"} profili trafiği işliyor.";
-                ActionLabel = "Korumayı Durdur";
+                StateDescription = $"{SelectedProfile?.Name ?? "Seçili profil"} trafiği yerel ZapretTR motoruyla işliyor.";
+                ActionLabel = "Durdur";
                 PowerGlyph = "✓";
-                HealthTitle = "Her şey yolunda";
-                HealthDescription = "winws2 çalışıyor. Bağlantı tanılama modülü bir sonraki aşamada eklenecek.";
+                HealthTitle = "Bağlantı korunuyor";
+                HealthDescription = "TLS bölme, ters paket sıralama ve DNS yönlendirmesi tek motorda çalışıyor.";
                 CanToggle = true;
+                CanSelectProfile = false;
                 break;
             case EngineState.Starting:
                 StateTitle = "Başlatılıyor";
-                StateDescription = "Motor ve WinDivert sürücüsü hazırlanıyor.";
-                ActionLabel = "Lütfen bekle";
+                StateDescription = "ZapretTR.Engine ve WinDivert hazırlanıyor.";
+                ActionLabel = "Bekle";
                 PowerGlyph = "…";
                 CanToggle = false;
+                CanSelectProfile = false;
                 break;
             case EngineState.Stopping:
                 StateTitle = "Durduruluyor";
-                StateDescription = "Ağ işleme süreci güvenli biçimde kapatılıyor.";
-                ActionLabel = "Lütfen bekle";
+                StateDescription = "Paket işleme kuyruğu kapatılıyor.";
+                ActionLabel = "Bekle";
                 PowerGlyph = "…";
                 CanToggle = false;
+                CanSelectProfile = false;
                 break;
             case EngineState.Faulted:
                 StateTitle = "Kontrol gerekli";
-                StateDescription = "Motor beklenmedik biçimde durdu. Ayrıntılar günlüklerde.";
-                ActionLabel = "Yeniden Dene";
+                StateDescription = "Birleşik motor beklenmedik biçimde durdu. Ayrıntılar günlükte.";
+                ActionLabel = "Yeniden dene";
                 PowerGlyph = "!";
                 CanToggle = SelectedProfile is not null;
+                CanSelectProfile = true;
                 break;
             default:
                 StateTitle = "Koruma kapalı";
-                StateDescription = "Bağlantı şu anda değişiklik yapılmadan çalışıyor.";
-                ActionLabel = "Korumayı Başlat";
+                StateDescription = "Bağlantı şu anda değiştirilmeden çalışıyor.";
+                ActionLabel = "Başlat";
                 PowerGlyph = "⌁";
-                HealthTitle = "Sistem hazır";
-                HealthDescription = "Motor ve Lua strateji dosyaları bulundu.";
+                HealthTitle = "Hazır";
+                HealthDescription = "ZapretTR.Engine ve WinDivert kullanılabilir.";
                 CanToggle = SelectedProfile is not null;
+                CanSelectProfile = true;
                 break;
         }
+    }
 
-        OnPropertyChanged(nameof(EngineVersionText));
+    private static string? FindExternalEngineProcess()
+    {
+        foreach (var processName in new[] { "goodbyedpi", "winws2", "ZapretTR.Engine" })
+        {
+            var processes = Process.GetProcessesByName(processName);
+            try
+            {
+                if (processes.Length > 0)
+                {
+                    return processName + ".exe";
+                }
+            }
+            finally
+            {
+                foreach (var process in processes)
+                {
+                    process.Dispose();
+                }
+            }
+        }
+
+        return null;
     }
 
     private void AddLog(string line)

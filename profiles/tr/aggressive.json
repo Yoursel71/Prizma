@@ -1,30 +1,15 @@
 {
   "id": "tr-aggressive",
   "name": "Türkiye • Güçlü",
-  "description": "Dengeli profil sonuç vermediğinde kullanılacak daha yüksek tekrarlı HTTP, TLS ve QUIC stratejisi.",
-  "badge": "İleri düzey",
+  "description": "TLS akışını ilk bayttan bölen daha güçlü ters-sıra stratejisi. Yalnız dengeli profil sonuç vermezse deneyin.",
+  "badge": "Güçlü",
   "risk": "High",
   "recommended": false,
   "arguments": [
-    "--wf-tcp-out=80,443",
-    "--wf-udp-out=443",
-    "--filter-tcp=80",
-    "--filter-l7=http",
-    "--out-range=-d10",
-    "--payload=http_req",
-    "--lua-desync=fake:blob=fake_default_http:ip_autottl=-2,3-20:ip6_autottl=-2,3-20:tcp_md5",
-    "--lua-desync=fakedsplit:ip_autottl=-2,3-20:ip6_autottl=-2,3-20:tcp_md5",
-    "--new",
-    "--filter-tcp=443",
-    "--filter-l7=tls",
-    "--out-range=-d10",
-    "--payload=tls_client_hello",
-    "--lua-desync=fake:blob=fake_default_tls:tcp_md5:tcp_seq=-10000:repeats=6",
-    "--lua-desync=multidisorder:pos=1,midsld",
-    "--new",
-    "--filter-udp=443",
-    "--filter-l7=quic",
-    "--payload=quic_initial",
-    "--lua-desync=fake:blob=fake_default_quic:repeats=8"
+    "--strategy", "turkey-auto",
+    "--tls-split", "1",
+    "--fake-ttl", "5",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
   ]
 }

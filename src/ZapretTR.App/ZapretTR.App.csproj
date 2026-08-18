@@ -13,15 +13,13 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>ZapretTR</AssemblyName>
     <RootNamespace>ZapretTR.App</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <Authors>ZapretTR contributors</Authors>
-    <Description>Türkiye için bağımsız zapret2 masaüstü arayüzü</Description>
+    <Description>Türkiye için birleşik ZapretTR paket işleme arayüzü</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="..\..\profiles\tr\*.json" Link="profiles\tr\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\..\lua\*.lua" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="..\..\artifacts\engine\windows-x64\*" Link="engine\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" Condition="Exists('..\..\artifacts\engine\windows-x64')" />
   </ItemGroup>
 
 </Project>

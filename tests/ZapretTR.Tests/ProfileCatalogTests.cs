@@ -11,7 +11,7 @@ public sealed class ProfileCatalogTests
 
         var profiles = new ProfileCatalog().Load(directory);
 
-        Assert.Equal(3, profiles.Count);
+        Assert.Equal(4, profiles.Count);
         Assert.Single(profiles, profile => profile.Recommended);
     }
 
@@ -50,6 +50,33 @@ public sealed class ProfileCatalogTests
         var profiles = new ProfileCatalog().Load(path);
 
         Assert.Empty(profiles);
+    }
+
+    [Fact]
+    public void Load_IgnoresLegacyEngineSelectorMetadata()
+    {
+        var directory = CreateDirectory();
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "legacy.json"), """
+                {
+                  "id": "legacy",
+                  "name": "Eski profil",
+                  "description": "Tek motor modeline taşınan profil",
+                  "engine": "GoodbyeDpi",
+                  "arguments": ["--mode=auto"]
+                }
+                """);
+
+            var profile = Assert.Single(new ProfileCatalog().Load(directory));
+
+            Assert.Equal("legacy", profile.Id);
+            Assert.Equal(["--mode=auto"], profile.Arguments);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     private static string CreateDirectory()

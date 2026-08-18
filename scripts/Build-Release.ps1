@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.1.0'
+    [string]$Version = '0.3.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,8 +15,10 @@ $stagingRoot = Join-Path $releaseRoot '.staging'
 $stagingDirectory = Join-Path $stagingRoot $buildId
 $stagingArchive = Join-Path $stagingRoot "$buildId.zip"
 $backupDirectory = Join-Path $releaseRoot ".backup-$buildId"
+$engineDirectory = Join-Path $stagingDirectory 'engine'
+$winDivertDirectory = Join-Path $repositoryRoot 'artifacts\engine\windivert-windows-x64'
 
-& (Join-Path $PSScriptRoot 'Get-ZapretEngine.ps1')
+& (Join-Path $PSScriptRoot 'Get-WinDivert.ps1')
 
 New-Item -ItemType Directory -Force -Path $releaseRoot, $stagingRoot | Out-Null
 $resolvedRelease = [IO.Path]::GetFullPath($releaseRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
@@ -41,13 +43,39 @@ try {
         -p:DebugType=None
     if ($LASTEXITCODE -ne 0) { throw 'Yayın derlemesi başarısız oldu.' }
 
+    & $dotnet publish (Join-Path $repositoryRoot 'src\ZapretTR.Engine\ZapretTR.Engine.csproj') `
+        --configuration Release `
+        --runtime win-x64 `
+        --self-contained true `
+        --output $engineDirectory `
+        -p:PublishSingleFile=true `
+        -p:IncludeNativeLibrariesForSelfExtract=true `
+        -p:DebugType=None
+    if ($LASTEXITCODE -ne 0) { throw 'Birleşik motor derlemesi başarısız oldu.' }
+
+    foreach ($fileName in @('WinDivert.dll', 'WinDivert64.sys', 'LICENSE-WinDivert.txt')) {
+        $source = Join-Path $winDivertDirectory $fileName
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "WinDivert çıktısı eksik: $fileName"
+        }
+        Copy-Item -LiteralPath $source -Destination (Join-Path $engineDirectory $fileName)
+    }
+
+    $licenseDirectory = Join-Path $stagingDirectory 'licenses'
+    New-Item -ItemType Directory -Force -Path $licenseDirectory | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination (Join-Path $licenseDirectory 'LICENSE-ZapretTR-MIT.txt')
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'NOTICE.md') -Destination (Join-Path $licenseDirectory 'NOTICE.md')
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt') -Destination $licenseDirectory
+
     $requiredOutputs = @(
         'ZapretTR.exe',
-        'engine\winws2.exe',
-        'engine\cygwin1.dll',
+        'engine\ZapretTR.Engine.exe',
         'engine\WinDivert.dll',
         'engine\WinDivert64.sys',
-        'engine\zapret-lib.lua',
+        'engine\LICENSE-WinDivert.txt',
+        'licenses\LICENSE-ZapretTR-MIT.txt',
+        'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt',
+        'licenses\NOTICE.md',
         'profiles\tr\balanced.json'
     )
     foreach ($relativePath in $requiredOutputs) {

@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ZapretTR.Core\ZapretTR.Core.csproj" />
+    <ProjectReference Include="..\..\src\ZapretTR.Engine\ZapretTR.Engine.csproj" />
   </ItemGroup>
 
   <ItemGroup>

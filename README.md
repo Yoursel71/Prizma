@@ -1,33 +1,51 @@
 # ZapretTR
 
-Türkiye'deki Windows kullanıcıları için, [zapret2](https://github.com/bol-van/zapret2) motorunu yöneten açık kaynaklı masaüstü arayüzü.
+Türkiye'deki Windows kullanıcıları için açık kaynaklı ve minimalist bağlantı koruma uygulaması.
+
+ZapretTR artık `goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Uygulamanın kendi [.NET 8 motoru](src/ZapretTR.Engine/) WinDivert'e doğrudan bağlanır; GoodbyeDPI'nin native fragmentation yaklaşımı ile zapret'in ters-sıralı desync fikrini tek, denetlenebilir paket hattında yeniden uygular.
 
 > [!IMPORTANT]
-> ZapretTR bağımsız bir topluluk projesidir; bol-van veya resmî zapret projesiyle bağlantılı değildir. Türkiye profilleri henüz deneysel başlangıç profilleridir ve operatör bazında doğrulanmış sonuç iddiasında bulunmaz.
+> ZapretTR bağımsız bir topluluk projesidir; GoodbyeDPI, zapret veya WinDivert projeleriyle resmî bağlantısı yoktur. Ağ davranışı operatöre göre değişebilir. Yalnızca bulunduğunuz yerde yasal olan amaçlarla kullanın.
 
-## Şu anda çalışanlar
+## Neler var?
 
-- Windows 10/11 için .NET 8 WPF arayüzü
-- Yönetici yetkisiyle güvenli `winws2` süreç yönetimi
-- Yapılandırılmış, sürümlenebilir JSON profilleri
-- Uyumluluk, Dengeli ve Güçlü başlangıç profilleri
-- Motor stdout/stderr günlüklerinin arayüzde gösterimi
-- Kapanışta motor sürecini ve alt süreçlerini durdurma
-- Sabitlenmiş zapret2 sürümü ve SHA-256 doğrulamalı motor indirme
-- Self-contained `win-x64` ZIP üretimi
-- Birim testleri ve GitHub Actions
+- Windows 10/11 için sade .NET 8 WPF arayüzü
+- Uygulamaya ait `ZapretTR.Engine.exe`; üçüncü taraf DPI motor binary'si yok
+- TLS ClientHello ve HTTP paketlerini yapılandırılabilir konumdan bölme
+- Zapret tarzı ters parça sıralaması
+- TTL=5 sahte TLS paketi ve güvenli SNI maskeleme
+- HTTP `Host` başlığı dönüşümü
+- Süreç içi IPv4 UDP DNS yönlendirmesi ve cevap geri eşleme
+- Fail-open paket hattı: beklenmeyen işleme hatasında özgün paket yeniden gönderilir
+- Bilinmeyen profil argümanlarını reddeden allowlist CLI
+- Yönetici yetkili motor yaşam döngüsü, log ve kapanış temizliği
+- Resmî WinDivert 2.2.2 için sabit SHA-256 doğrulamalı paketleme
+- Self-contained `win-x64` release ve sürücüsüz saf paket testleri
 
-## Durum
+## Mimari
 
-Proje erken alfa aşamasındadır. Arayüzün Liquid Glass tasarım sistemi, otomatik bağlantı testi, operatör algılama, sistem tepsisi ve güncelleme sistemi sonraki geliştirme aşamalarındadır.
+```text
+ZapretTR.App       Minimal WPF arayüzü
+      │
+      ▼
+ZapretTR.Core      Profil, süreç ve durum yönetimi
+      │
+      ▼
+ZapretTR.Engine    Bize ait paket ayrıştırma/desync motoru
+      │
+      ▼
+WinDivert.dll + WinDivert64.sys
+```
 
-## Hızlı derleme
+WinDivert sürücüsü teknik olarak ayrı `.dll` ve imzalı `.sys` dosyaları gerektirir. Bunun dışında GoodbyeDPI veya zapret çalıştırılabilir dosyası pakete konmaz.
+
+## Derleme
 
 Gereksinimler:
 
-- Windows 10 veya Windows 11
+- Windows 10/11 x64
 - .NET 8 SDK
-- PowerShell 7 veya Windows PowerShell 5.1+
+- PowerShell 5.1 veya 7+
 
 ```powershell
 dotnet restore ZapretTR.sln
@@ -35,44 +53,34 @@ dotnet build ZapretTR.sln --configuration Release
 dotnet test ZapretTR.sln --configuration Release
 ```
 
-Çalıştırılabilir, self-contained paket üretmek için:
+Self-contained paket:
 
 ```powershell
-./scripts/Build-Release.ps1 -Version 0.1.0
+./scripts/Build-Release.ps1 -Version 0.3.0
 ```
 
-Paket `artifacts/release/` altında oluşur. Betik zapret2 `v1.0.4` arşivini indirir, sabit SHA-256 özetiyle doğrular ve yalnızca gerekli Windows x64 motor dosyalarını pakete ekler.
+Betik yalnız resmî WinDivert `v2.2.2` arşivini indirir ve `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. GUI ve motor doğrudan bu kaynak ağacından derlenir. Çıktı `artifacts/release/` altındadır.
 
-## Mimari
+## Profiller
 
-```text
-src/ZapretTR.App     WPF arayüzü, durum ve kullanıcı etkileşimi
-src/ZapretTR.Core    Profil okuma, argüman oluşturma ve motor yaşam döngüsü
-profiles/tr          Türkiye başlangıç profilleri
-tests                Çekirdek birim testleri
-scripts              Doğrulanmış motor indirme ve yayın paketleme
-```
+- **Türkiye • Dengeli:** reverse split, TTL=5 fake ve DNS yönlendirmesi
+- **Türkiye • Uyumluluk:** sıralı split, sahte paket yok
+- **Türkiye • Güçlü:** ilk bayttan daha agresif reverse split
+- **Türkiye • Roblox:** DNS'i değiştirmeyen sade TLS profili
 
-Profiller tek bir shell komutuna dönüştürülmez. Her seçenek `ProcessStartInfo.ArgumentList` üzerinden ayrı argüman olarak iletilir; böylece shell yorumlama ve komut enjeksiyonu engellenir.
+Profil seçenekleri tek bir shell komutuna çevrilmez. Her token `ProcessStartInfo.ArgumentList` ile iletilir ve motor bilinmeyen seçenekleri reddeder.
 
-## Güvenlik ve gizlilik
+## Mevcut sınırlar
 
-ZapretTR herhangi bir proxy veya uzak sunucu sağlamaz. Trafik yerel zapret2/WinDivert motoru tarafından işlenir. Mevcut alfa sürümü telemetri toplamaz. Güvenlik bildirimi için [SECURITY.md](SECURITY.md) dosyasına bakın.
+0.3.0 motoru bilinçli olarak dar bir MVP'dir:
 
-Uygulamayı ve motor dosyalarını yalnızca güvenilir sürüm sayfasından indirin. İmzalanmamış erken sürümlerde Windows SmartScreen uyarısı görülebilir; yayımlanan SHA-256 değerini doğrulayın.
+- IPv4 TCP 80/443 ve IPv4 UDP DNS işlenir.
+- IPv6 DNS, QUIC/HTTP3, TLS reassembly ve hostlist henüz yoktur.
+- WinDivert sürücüsü üçüncü taraf ve dinamik bağımlılıktır.
+- Erken geliştirme paketleri kod imzalı değildir.
 
-## Upstream ve lisans
+## Kaynak ve lisans
 
-ZapretTR, aktif [bol-van/zapret2](https://github.com/bol-van/zapret2) kaynak ağacını temel alır. zapret2 ve bu depodaki upstream bileşenler MIT lisanslıdır. Paketlenen motorun telif ve lisans metni dağıtıma dahil edilir. Ayrıntılar için [LICENSE](LICENSE) ve [NOTICE.md](NOTICE.md) dosyalarına bakın.
+Paket işleme tasarımı [GoodbyeDPI-Turkey `release-0.2.3rc3-turkey`](https://github.com/cagritaskn/GoodbyeDPI-Turkey/tree/02fee64e1e44759b38aa4b05a46f8bcedaa3bec8), [ValdikSS/GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) ve [bol-van/zapret2](https://github.com/bol-van/zapret2) kaynakları incelenerek C#'ta yeniden uygulanmıştır. WinDivert dinamik olarak LGPLv3 seçeneği altında kullanılır.
 
-## Yol haritası
-
-- Liquid Glass tasarım sistemi ve özel pencere kabuğu
-- Bağlantı tanılama ve otomatik profil önerisi
-- Türk Telekom, TurkNet, Vodafone ve diğer ağlardan anonim olmayan, kullanıcı onaylı yerel test matrisi
-- Sistem tepsisi ve Windows başlangıcı
-- Profil dry-run doğrulaması
-- İmzalı installer ve otomatik güncelleme
-- İngilizce arayüz ve dokümantasyon
-
-Katkıda bulunmadan önce [CONTRIBUTING.md](CONTRIBUTING.md) belgesini okuyun.
+Proje kodu [LICENSE](LICENSE) altındadır. Kaynak sabitlemeleri ve üçüncü taraf bildirimleri için [NOTICE.md](NOTICE.md), güvenlik bildirimi için [SECURITY.md](SECURITY.md) dosyasına bakın.

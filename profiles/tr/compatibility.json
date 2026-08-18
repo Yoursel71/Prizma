@@ -1,20 +1,14 @@
 {
   "id": "tr-compatibility",
   "name": "Türkiye • Uyumluluk",
-  "description": "Yalnızca HTTP ve TLS üzerinde daha hafif paket bölme uygular. Bağlantı kararlılığı önceliklidir.",
+  "description": "TLS parçalarını normal sırada gönderir ve sahte paket kullanmaz. Standart profil bazı siteleri etkilerse deneyin.",
   "badge": "Düşük müdahale",
   "risk": "Low",
   "recommended": false,
   "arguments": [
-    "--wf-tcp-out=80,443",
-    "--filter-tcp=80",
-    "--filter-l7=http",
-    "--payload=http_req",
-    "--lua-desync=multisplit:pos=method+2",
-    "--new",
-    "--filter-tcp=443",
-    "--filter-l7=tls",
-    "--payload=tls_client_hello",
-    "--lua-desync=multisplit:pos=1,midsld"
+    "--strategy", "compatibility",
+    "--no-fake",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
   ]
 }

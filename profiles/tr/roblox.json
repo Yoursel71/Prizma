@@ -1,0 +1,12 @@
+{
+  "id": "tr-roblox",
+  "name": "Türkiye • Roblox",
+  "description": "Roblox web ve TLS erişimi için sade ters-bölme profili. DNS'i kullanıcıya bırakır; diğer HTTPS trafiğinde de aynı stratejiyi uygular.",
+  "badge": "Roblox • DNS'siz",
+  "risk": "Low",
+  "recommended": false,
+  "arguments": [
+    "--strategy", "direct",
+    "--fake-ttl", "5"
+  ]
+}

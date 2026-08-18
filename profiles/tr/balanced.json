@@ -1,30 +1,14 @@
 {
   "id": "tr-balanced",
   "name": "Türkiye • Dengeli",
-  "description": "HTTP, TLS ve QUIC trafiği için ölçülü başlangıç stratejisi. Otomatik test verileri birikene kadar deneysel kabul edilir.",
-  "badge": "Önerilen başlangıç",
-  "risk": "Medium",
+  "description": "TLS ve HTTP paketlerini iki bayttan bölüp ters sırada gönderir; düşük TTL sahte paket ve süreç içi DNS yönlendirmesi uygular.",
+  "badge": "Önerilen • Türkiye",
+  "risk": "Low",
   "recommended": true,
   "arguments": [
-    "--wf-tcp-out=80,443",
-    "--wf-udp-out=443",
-    "--filter-tcp=80",
-    "--filter-l7=http",
-    "--out-range=-d10",
-    "--payload=http_req",
-    "--lua-desync=fake:blob=fake_default_http:tcp_md5",
-    "--lua-desync=multisplit:pos=method+2",
-    "--new",
-    "--filter-tcp=443",
-    "--filter-l7=tls",
-    "--out-range=-d10",
-    "--payload=tls_client_hello",
-    "--lua-desync=fake:blob=fake_default_tls:tcp_md5:tcp_seq=-10000:repeats=3",
-    "--lua-desync=multidisorder:pos=midsld",
-    "--new",
-    "--filter-udp=443",
-    "--filter-l7=quic",
-    "--payload=quic_initial",
-    "--lua-desync=fake:blob=fake_default_quic:repeats=3"
+    "--strategy", "turkey-auto",
+    "--fake-ttl", "5",
+    "--dns-address", "77.88.8.8",
+    "--dns-port", "1253"
   ]
 }
