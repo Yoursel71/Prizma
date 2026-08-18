@@ -2,7 +2,7 @@
 
 Güvenlik açığını herkese açık issue olarak paylaşmayın. Depo yayımlandıktan sonra GitHub Security Advisories üzerinden özel bildirim kullanın. Rapor; etkilenen sürümü, yeniden üretim adımlarını ve olası etkiyi içermelidir.
 
-ZapretTR yönetici yetkisiyle çalıştığı için aşağıdaki alanlar özellikle hassastır:
+Prizma yönetici yetkisiyle çalıştığı için aşağıdaki alanlar özellikle hassastır:
 
 - Profil ve komut satırı doğrulaması
 - Motor ve WinDivert dosyalarının bütünlük kontrolü

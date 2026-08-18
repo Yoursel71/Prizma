@@ -1,15 +1,15 @@
 # Profil araştırma notları
 
-Bu dosya ZapretTR 0.4 profillerinin neden bu şekilde kurulduğunu ve hangi davranışın gerçekten uygulandığını kaydeder. Amaç başka projelerin komutlarını körlemesine kopyalamak değil, aynı ağ tekniğini kendi paket motorumuzda denetlenebilir biçimde yeniden uygulamaktır.
+Bu dosya Prizma 1.0 profillerinin neden bu şekilde kurulduğunu ve hangi davranışın gerçekten uygulandığını kaydeder. Amaç başka projelerin komutlarını körlemesine kopyalamak değil, aynı ağ tekniğini kendi paket motorumuzda denetlenebilir biçimde yeniden uygulamaktır.
 
 ## İncelenen açık kaynak yaklaşımları
 
-- **bol-van/zapret2:** `multisplit` ve `multidisorder` birden fazla işaret noktasını çözer, sıralar ve özgün TCP verisini parçalara ayırır. Güncel `blockcheck2` TLS taramasında `1`, `sniext+1`, `host+1`, `midsld` ve `1,midsld` gibi adayları dener. ZapretTR'nin `midsld` işareti, SNI içindeki ikinci seviye etiketin ortasını çözer.
-- **ValdikSS/GoodbyeDPI:** modern mod kümeleri HTTP/TLS bölme, ters parça sırası, sahte paket ve isteğe bağlı `-q` QUIC engelini birlikte kullanır. Sabit TTL seçeneğinin siteleri bozabileceği upstream tarafından özellikle belirtilir; bu nedenle ZapretTR'de yalnız Dengeli/Güçlü/Hedefli profillerde TTL=5 bulunur.
-- **hufrea/byedpi:** Windows için SNI'ye göre bölme ile disorder yaklaşımının birlikte kullanılmasını, ayrıca host allowlist'iyle etkinin sınırlandırılmasını belgeler. ZapretTR'nin `--host-suffix` seçeneği aynı güvenlik sınırını kendi motorunda uygular.
-- **Flowseal/zapret-discord-youtube:** güncel Windows stratejilerinde alan adı listeleriyle UDP/QUIC ve TCP/TLS için ayrı davranışlar kullanır. Bu ayrım nedeniyle ZapretTR Güçlü profili QUIC'i kapatırken Dengeli ve Uyumluluk profilleri açık bırakır.
+- **bol-van/zapret2:** `multisplit` ve `multidisorder` birden fazla işaret noktasını çözer, sıralar ve özgün TCP verisini parçalara ayırır. Güncel `blockcheck2` TLS taramasında `1`, `sniext+1`, `host+1`, `midsld` ve `1,midsld` gibi adayları dener. Prizma'nın `midsld` işareti, SNI içindeki ikinci seviye etiketin ortasını çözer.
+- **ValdikSS/GoodbyeDPI:** modern mod kümeleri HTTP/TLS bölme, ters parça sırası, sahte paket ve isteğe bağlı `-q` QUIC engelini birlikte kullanır. Sabit TTL seçeneğinin siteleri bozabileceği upstream tarafından özellikle belirtilir; bu nedenle Prizma'da yalnız Dengeli/Güçlü/Hedefli profillerde TTL=5 bulunur.
+- **hufrea/byedpi:** Windows için SNI'ye göre bölme ile disorder yaklaşımının birlikte kullanılmasını, ayrıca host allowlist'iyle etkinin sınırlandırılmasını belgeler. Prizma'nın `--host-suffix` seçeneği aynı güvenlik sınırını kendi motorunda uygular.
+- **Flowseal/zapret-discord-youtube:** güncel Windows stratejilerinde alan adı listeleriyle UDP/QUIC ve TCP/TLS için ayrı davranışlar kullanır. Bu ayrım nedeniyle Prizma Güçlü profili QUIC'i kapatırken Dengeli ve Uyumluluk profilleri açık bırakır.
 
-## 0.4 profil matrisi
+## 1.0 profil matrisi
 
 | Profil | TLS bölme | Sıra | Sahte | QUIC | Kapsam |
 |---|---|---|---|---|---|

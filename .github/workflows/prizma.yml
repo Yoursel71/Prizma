@@ -1,0 +1,45 @@
+name: Prizma
+
+on:
+  push:
+    branches: [master, "codex/**"]
+    tags: ["v*"]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "profiles/**"
+      - "scripts/**"
+      - "Prizma.sln"
+      - ".github/workflows/prizma.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "profiles/**"
+      - "scripts/**"
+      - "Prizma.sln"
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "8.0.x"
+      - name: Restore
+        run: dotnet restore Prizma.sln
+      - name: Build
+        run: dotnet build Prizma.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test Prizma.sln --configuration Release --no-build --no-restore
+      - name: Create self-contained package
+        shell: pwsh
+        run: ./scripts/Build-Release.ps1 -Version "1.0.0-ci"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Prizma-win-x64
+          path: artifacts/release/Prizma-v1.0.0-ci-win-x64.zip
+          if-no-files-found: error

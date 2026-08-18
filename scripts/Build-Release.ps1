@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.4.0'
+    [string]$Version = '1.0.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,8 +8,8 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $localDotnet = Join-Path $repositoryRoot '.tools\dotnet\dotnet.exe'
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { 'dotnet' }
 $releaseRoot = Join-Path $repositoryRoot 'artifacts\release'
-$publishDirectory = Join-Path $releaseRoot "ZapretTR-v$Version-win-x64"
-$archivePath = Join-Path $releaseRoot "ZapretTR-v$Version-win-x64.zip"
+$publishDirectory = Join-Path $releaseRoot "Prizma-v$Version-win-x64"
+$archivePath = Join-Path $releaseRoot "Prizma-v$Version-win-x64.zip"
 $buildId = [Guid]::NewGuid().ToString('N')
 $stagingRoot = Join-Path $releaseRoot '.staging'
 $stagingDirectory = Join-Path $stagingRoot $buildId
@@ -30,10 +30,10 @@ foreach ($candidate in @($publishDirectory, $stagingDirectory, $stagingArchive, 
 }
 
 try {
-    & $dotnet test (Join-Path $repositoryRoot 'ZapretTR.sln') --configuration Release
+    & $dotnet test (Join-Path $repositoryRoot 'Prizma.sln') --configuration Release
     if ($LASTEXITCODE -ne 0) { throw 'Testler başarısız oldu.' }
 
-    & $dotnet publish (Join-Path $repositoryRoot 'src\ZapretTR.App\ZapretTR.App.csproj') `
+    & $dotnet publish (Join-Path $repositoryRoot 'src\Prizma.App\Prizma.App.csproj') `
         --configuration Release `
         --runtime win-x64 `
         --self-contained true `
@@ -43,7 +43,7 @@ try {
         -p:DebugType=None
     if ($LASTEXITCODE -ne 0) { throw 'Yayın derlemesi başarısız oldu.' }
 
-    & $dotnet publish (Join-Path $repositoryRoot 'src\ZapretTR.Engine\ZapretTR.Engine.csproj') `
+    & $dotnet publish (Join-Path $repositoryRoot 'src\Prizma.Engine\Prizma.Engine.csproj') `
         --configuration Release `
         --runtime win-x64 `
         --self-contained true `
@@ -63,21 +63,21 @@ try {
 
     $licenseDirectory = Join-Path $stagingDirectory 'licenses'
     New-Item -ItemType Directory -Force -Path $licenseDirectory | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination (Join-Path $licenseDirectory 'LICENSE-ZapretTR-MIT.txt')
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination (Join-Path $licenseDirectory 'LICENSE-Prizma-MIT.txt')
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'NOTICE.md') -Destination (Join-Path $licenseDirectory 'NOTICE.md')
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt') -Destination $licenseDirectory
 
-    foreach ($installer in @('Install-ZapretTR.ps1', 'Uninstall-ZapretTR.ps1', 'Kur.cmd', 'Kaldir.cmd')) {
+    foreach ($installer in @('Install-Prizma.ps1', 'Uninstall-Prizma.ps1', 'Kur.cmd', 'Kaldir.cmd')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $installer) -Destination (Join-Path $stagingDirectory $installer)
     }
 
     $requiredOutputs = @(
-        'ZapretTR.exe',
-        'engine\ZapretTR.Engine.exe',
+        'Prizma.exe',
+        'engine\Prizma.Engine.exe',
         'engine\WinDivert.dll',
         'engine\WinDivert64.sys',
         'engine\LICENSE-WinDivert.txt',
-        'licenses\LICENSE-ZapretTR-MIT.txt',
+        'licenses\LICENSE-Prizma-MIT.txt',
         'licenses\LICENSE-GoodbyeDPI-Apache-2.0.txt',
         'licenses\NOTICE.md',
         'profiles\tr\balanced.json',

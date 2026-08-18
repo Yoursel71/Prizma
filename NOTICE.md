@@ -1,6 +1,6 @@
 # Third-party notices
 
-ZapretTR is an independent project. Its unified engine is original C#/.NET code maintained in this repository; it does not redistribute or execute `goodbyedpi.exe`, `winws2.exe`, the zapret Lua runtime, or Cygwin.
+Prizma is an independent project. Its unified engine is original C#/.NET code maintained in this repository; it does not redistribute or execute `goodbyedpi.exe`, `winws2.exe`, the zapret Lua runtime, or Cygwin.
 
 The packet processing design was developed with reference to:
 
@@ -8,7 +8,7 @@ The packet processing design was developed with reference to:
 - bol-van/zapret2, especially TLS/HTTP classification and `multisplit` / `multidisorder` strategy concepts. zapret2 is Copyright © 2016–2026 bol-van and is licensed under MIT. The upstream repository remains the base history of this fork.
 - hufrea/byedpi and Flowseal/zapret-discord-youtube were reviewed for SNI-relative split, host-scoped strategy and Windows QUIC fallback behavior. No source or executable from either project is redistributed.
 
-ZapretTR's C# implementation, command model, safety checks, tests, and UI are project-specific changes. Third-party source files are not copied wholesale into `src/ZapretTR.Engine`.
+Prizma's C# implementation, command model, safety checks, tests, and UI are project-specific changes. Third-party source files are not copied wholesale into `src/Prizma.Engine`.
 
 Release packages include unmodified `WinDivert.dll` and `WinDivert64.sys` from official WinDivert `v2.2.2-A`. WinDivert is Copyright © basil00 and is dynamically used under the LGPL Version 3 option. Its original license is shipped as `engine/LICENSE-WinDivert.txt`, allowing replacement of the dynamic library.
 
