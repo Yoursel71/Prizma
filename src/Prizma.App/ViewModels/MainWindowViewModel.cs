@@ -18,6 +18,7 @@ namespace Prizma.App.ViewModels;
 public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 {
     private readonly UnifiedEngineController _engine;
+    private readonly WindowsDnsCacheFlusher _dnsCacheFlusher = new();
     private readonly WindowsServiceManager _serviceManager = new();
     private ConnectionProfile? _selectedProfile;
     private string _stateTitle = "Hazır";
@@ -184,6 +185,15 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 
             AddLog($"{SelectedProfile.Name} başlatılıyor…");
             await _engine.StartAsync(SelectedProfile);
+            try
+            {
+                await _dnsCacheFlusher.FlushAsync();
+            }
+            catch
+            {
+                await _engine.StopAsync();
+                throw;
+            }
             AddLog("Birleşik koruma etkin.");
         }
         catch (Exception exception)
@@ -205,6 +215,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
                 if (_engine.State == EngineState.Running) await _engine.StopAsync();
                 AddLog($"{SelectedProfile.Name} Windows hizmeti olarak kuruluyor…");
                 await _serviceManager.InstallAsync(Path.Combine(AppContext.BaseDirectory, "engine"), SelectedProfile);
+                await _dnsCacheFlusher.FlushAsync();
                 AddLog("Hizmet kuruldu; Windows ile otomatik başlayacak.");
             }
             else
@@ -234,7 +245,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         if (showConfirmation)
         {
             var confirmation = MessageBox.Show(
-                "Prizma bu ağda 128 güvenli stratejiyi sırayla dener. Ölçüm 3–10 dakika sürebilir ve en fazla 40 MB veri kullanır. Bu sırada bağlantı kısa aralıklarla yeniden kurulabilir.\n\nDevam edilsin mi?",
+                "Prizma bu ağda 128 güvenli stratejiyi Roblox web, istemci, CDN, API ve gerçek zamanlı bağlantı hedeflerinde sırayla dener. Ölçüm 5–15 dakika sürebilir ve en fazla 40 MB veri kullanır. Bu sırada bağlantı kısa aralıklarla yeniden kurulabilir.\n\nDevam edilsin mi?",
                 "Prizma Adaptive", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (confirmation != MessageBoxResult.Yes) return;
         }

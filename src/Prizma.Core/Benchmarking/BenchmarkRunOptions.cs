@@ -16,7 +16,11 @@ public sealed class BenchmarkRunOptions
         AccessibilityTargets =
         [
             new Uri("https://www.cloudflare.com/cdn-cgi/trace"),
-            new Uri("https://www.roblox.com/")
+            new Uri("https://www.roblox.com/"),
+            new Uri("https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer"),
+            new Uri("https://apis.roblox.com/"),
+            new Uri("https://accountsettings.roblox.com/v1/email"),
+            new Uri("https://realtime-signalr.roblox.com/")
         ],
         ThroughputTarget = new Uri("https://speed.cloudflare.com/__down?bytes=262144")
     };
