@@ -4,10 +4,10 @@ public sealed class BenchmarkRunOptions
 {
     public required IReadOnlyList<Uri> AccessibilityTargets { get; init; }
     public Uri? ThroughputTarget { get; init; }
-    public int MaximumProfiles { get; init; } = 128;
+    public int MaximumProfiles { get; init; } = 160;
     public int AccessibilityReadBytes { get; init; } = 512;
     public int ThroughputBytesPerProfile { get; init; } = 256 * 1024;
-    public long MaximumDownloadedBytes { get; init; } = 40L * 1024 * 1024;
+    public long MaximumDownloadedBytes { get; init; } = 48L * 1024 * 1024;
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(8);
     public TimeSpan EngineSettleDelay { get; init; } = TimeSpan.FromMilliseconds(250);
 

@@ -30,7 +30,13 @@ public sealed unsafe class PacketEngine : IDisposable
         var dnsLabel = _options.DnsOverHttpsEndpoint is not null
             ? $"DoH/{_options.DnsOverHttpsEndpoint.Host}"
             : _options.DnsAddress?.ToString() ?? "kapalı";
-        Console.WriteLine($"Prizma.Engine hazır • TLS split={string.Join(',', _options.SplitPositions)}+{_options.TlsSplitMarker} • reverse={_options.ReverseFragments} • QUIC={(_options.BlockQuic ? "kapalı" : "açık")} • DNS={dnsLabel}");
+        var fakeModes = new List<string>();
+        if (_options.FakeTtl is { } ttl) fakeModes.Add($"TTL{ttl}");
+        if (_options.FakeSequenceOffset is not null) fakeModes.Add("SEQ");
+        if (_options.FakeWrongChecksum) fakeModes.Add("CHK");
+        var fakeLabel = fakeModes.Count == 0 ? "kapalı" : string.Join('+', fakeModes);
+        if (fakeModes.Count > 0 && _options.FakeHostSuffixes.Count > 0) fakeLabel += "/hedefli";
+        Console.WriteLine($"Prizma.Engine hazır • TLS split={string.Join(',', _options.SplitPositions)}+{_options.TlsSplitMarker} • reverse={_options.ReverseFragments} • fake={fakeLabel} • QUIC={(_options.BlockQuic ? "kapalı" : "açık")} • DNS={dnsLabel}");
         var receiveBuffer = new byte[ushort.MaxValue + 40];
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -111,16 +117,20 @@ public sealed unsafe class PacketEngine : IDisposable
         if (address.Outbound && layout.Protocol == PacketLayout.TcpProtocol)
         {
             var host = PacketTransformer.GetApplicationHost(packet, layout);
-            if (_options.HostSuffixes.Count > 0 && (host is null || !_options.HostSuffixes.Any(suffix =>
-                    host.Equals(suffix, StringComparison.OrdinalIgnoreCase) || host.EndsWith('.' + suffix, StringComparison.OrdinalIgnoreCase))))
+            if (_options.HostSuffixes.Count > 0 && !MatchesSuffix(host, _options.HostSuffixes))
             {
                 Send(packet, address);
                 return;
             }
 
             var isTls = PacketTransformer.IsTlsClientHello(packet, layout);
-            var modified = _options.RewriteHttpHost && PacketTransformer.RewriteHttpHost(packet, layout);
-            if (isTls || modified)
+            var isHttp = PacketTransformer.IsHttpRequest(packet, layout);
+            if (isHttp && _options.RewriteHttpHost)
+            {
+                PacketTransformer.RewriteHttpHost(packet, layout);
+            }
+
+            if (isTls || isHttp)
             {
                 if (layout.PayloadLength > _options.MaxPayload)
                 {
@@ -128,12 +138,16 @@ public sealed unsafe class PacketEngine : IDisposable
                     return;
                 }
 
-                if (isTls && (_options.FakeTtl is not null || _options.FakeSequenceOffset is not null) &&
+                if (isTls && (_options.FakeTtl is not null || _options.FakeSequenceOffset is not null || _options.FakeWrongChecksum) &&
+                    (_options.FakeHostSuffixes.Count == 0 || MatchesSuffix(host, _options.FakeHostSuffixes)) &&
                     _flowTracker.ShouldSendFake(packet, layout) &&
                     PacketTransformer.CreateFakeTlsPacket(packet, layout, _options.FakeTtl,
                         _options.FakeSequenceOffset, _options.MaxPayload) is { } fake)
                 {
-                    for (var repeat = 0; repeat < _options.FakeRepeats; repeat++) Send(fake, address);
+                    for (var repeat = 0; repeat < _options.FakeRepeats; repeat++)
+                    {
+                        Send(fake, address, _options.FakeWrongChecksum);
+                    }
                 }
 
                 var positions = _options.SplitPositions.ToList();
@@ -150,7 +164,7 @@ public sealed unsafe class PacketEngine : IDisposable
         Send(packet, address);
     }
 
-    private void Send(ReadOnlySpan<byte> packet, WinDivertNative.Address address)
+    private void Send(ReadOnlySpan<byte> packet, WinDivertNative.Address address, bool corruptTcpChecksum = false)
     {
         var copy = packet.ToArray();
         fixed (byte* pointer = copy)
@@ -161,12 +175,27 @@ public sealed unsafe class PacketEngine : IDisposable
                 throw WinDivertNative.LastError("Paket checksum hesaplanamadı");
             }
 
+            if (corruptTcpChecksum)
+            {
+                if (!PacketLayout.TryParse(copy, out var layout) || layout.Protocol != PacketLayout.TcpProtocol)
+                {
+                    throw new InvalidDataException("Fake TCP checksum için paket ayrıştırılamadı.");
+                }
+
+                PacketTransformer.CorruptTcpChecksum(copy, layout);
+            }
+
             if (!WinDivertNative.Send(_handle, pointer, (uint)copy.Length, out _, ref address))
             {
                 throw WinDivertNative.LastError("Paket gönderilemedi");
             }
         }
     }
+
+    private static bool MatchesSuffix(string? host, IReadOnlyList<string> suffixes) =>
+        host is not null && suffixes.Any(suffix =>
+            host.Equals(suffix, StringComparison.OrdinalIgnoreCase) ||
+            host.EndsWith('.' + suffix, StringComparison.OrdinalIgnoreCase));
 
     private void StopReceiving()
     {

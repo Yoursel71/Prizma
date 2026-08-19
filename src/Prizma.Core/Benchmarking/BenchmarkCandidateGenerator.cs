@@ -19,10 +19,11 @@ public sealed class BenchmarkCandidateGenerator
 
     private static readonly FakeRecipe[] FakeRecipes =
     [
-        new("none", "sahte kapalı", ["--no-fake"]),
-        new("seq", "yalnız sıra sapması", ["--no-fake", "--fake-seq-offset", "-10000", "--fake-repeats", "1"]),
-        new("ttl4", "TTL 4 + sıra sapması", ["--fake-ttl", "4", "--fake-seq-offset", "-10000", "--fake-repeats", "1"]),
-        new("ttl5", "TTL 5 + sıra sapması", ["--fake-ttl", "5", "--fake-seq-offset", "-10000", "--fake-repeats", "1"])
+        new("none", "sahte kapalı", ["--no-fake"], false),
+        new("seq", "geçmiş sıra numarası", ["--no-fake", "--fake-seq-offset", "-10000", "--fake-repeats", "1"], true),
+        new("checksum", "hatalı checksum", ["--no-fake", "--fake-wrong-checksum", "--fake-repeats", "1"], true),
+        new("ttl5", "hedefli TTL 5", ["--fake-ttl", "5", "--fake-repeats", "1"], true),
+        new("ttl5-seq", "hedefli TTL 5 + sıra sapması", ["--fake-ttl", "5", "--fake-seq-offset", "-10000", "--fake-repeats", "1"], true)
     ];
 
     public IReadOnlyList<ConnectionProfile> Generate(BenchmarkCandidateOptions? options = null)
@@ -33,7 +34,7 @@ public sealed class BenchmarkCandidateGenerator
         var dnsLanes = options.CompareDnsOnAndOff && options.DnsDohEndpoint is not null
             ? new[] { false, true }
             : new[] { options.DnsDohEndpoint is not null };
-        var profiles = new List<ConnectionProfile>(128);
+        var profiles = new List<ConnectionProfile>(160);
         foreach (var split in SplitRecipes)
         foreach (var reverse in new[] { false, true })
         foreach (var fake in FakeRecipes)
@@ -46,8 +47,13 @@ public sealed class BenchmarkCandidateGenerator
             var arguments = new List<string>(split.Arguments.Length + fake.Arguments.Length + 10);
             arguments.AddRange(split.Arguments);
             arguments.Add(reverse ? "--reverse-fragments" : "--ordered-fragments");
-            arguments.Add("--rewrite-http-host");
+            arguments.Add("--no-http-rewrite");
             arguments.AddRange(fake.Arguments);
+            if (fake.RequiresHostScope && options.FakeHostSuffixes.Count > 0)
+            {
+                arguments.Add("--fake-host-suffix");
+                arguments.Add(string.Join(',', options.FakeHostSuffixes));
+            }
             arguments.Add(blockQuic ? "--block-quic" : "--allow-quic");
 
             if (useDns)
@@ -81,7 +87,7 @@ public sealed class BenchmarkCandidateGenerator
 
     private static ProfileRisk DetermineRisk(bool reverse, string fakeId, bool blockQuic)
     {
-        if (fakeId is "ttl4" || (reverse && blockQuic))
+        if (fakeId == "ttl5-seq" || (reverse && blockQuic))
         {
             return ProfileRisk.High;
         }
@@ -113,10 +119,15 @@ public sealed class BenchmarkCandidateGenerator
         {
             throw new ArgumentException("Alan adı son ekleri boş olamaz.", nameof(options));
         }
+
+        if (options.FakeHostSuffixes.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("Fake alan adı son ekleri boş olamaz.", nameof(options));
+        }
     }
 
     private sealed record SplitRecipe(string Id, string DisplayName, string[] Arguments);
-    private sealed record FakeRecipe(string Id, string DisplayName, string[] Arguments);
+    private sealed record FakeRecipe(string Id, string DisplayName, string[] Arguments, bool RequiresHostScope);
 }
 
 public sealed class BenchmarkCandidateOptions
@@ -125,4 +136,10 @@ public sealed class BenchmarkCandidateOptions
     public string? DnsDohBootstrapAddress { get; init; } = "1.1.1.1";
     public bool CompareDnsOnAndOff { get; init; } = true;
     public IReadOnlyList<string> HostSuffixes { get; init; } = [];
+    public IReadOnlyList<string> FakeHostSuffixes { get; init; } =
+    [
+        "roblox.com", "rbxcdn.com", "rbx.com",
+        "discord.com", "discord.gg", "discordapp.com", "discordapp.net",
+        "youtube.com", "googlevideo.com", "ytimg.com"
+    ];
 }

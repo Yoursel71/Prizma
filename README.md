@@ -18,7 +18,7 @@
 
 ## Prizma nedir?
 
-Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı geliştirilmiş minimalist bir masaüstü uygulamasıdır. Hazır bir komut dosyasını körlemesine çalıştırmak yerine, ağınızda **128 güvenli stratejiyi** sırayla ölçer; erişim, TLS gecikmesi ve küçük bir bant genişliği örneğine göre en uygun profili yerel olarak seçer.
+Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı geliştirilmiş minimalist bir masaüstü uygulamasıdır. Hazır bir komut dosyasını körlemesine çalıştırmak yerine, ağınızda **160 güvenli stratejiyi** sırayla ölçer; erişim, TLS gecikmesi ve küçük bir bant genişliği örneğine göre en uygun profili yerel olarak seçer.
 
 `goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Projeye ait [.NET 8 paket motoru](src/Prizma.Engine/) WinDivert'e doğrudan bağlanır; incelenen açık kaynak DPI dayanıklılığı yaklaşımlarını tek, test edilebilir ve allowlist kontrollü bir hatta yeniden uygular.
 
@@ -29,7 +29,7 @@ Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı ge
 
 | Yerel motor | Adaptive profil laboratuvarı | Güvenli DNS hattı |
 |---|---|---|
-| Üçüncü taraf DPI motoru çalıştırmaz. C# kaynak kodu, argüman allowlist'i ve paket testleri bu depodadır. | 128 adayı aynı yaşam döngüsünde dener. Erişemeyen hızlı profil kazanamaz; önce doğruluk, sonra gecikme ve Mbps gelir. | Cloudflare wire-format DoH kullanır. Bootstrap IP sabittir; TLS sertifika adı ve zinciri hiçbir zaman devre dışı bırakılmaz. |
+| Üçüncü taraf DPI motoru çalıştırmaz. C# kaynak kodu, argüman allowlist'i ve paket testleri bu depodadır. | 160 adayı aynı yaşam döngüsünde dener. Erişemeyen hızlı profil kazanamaz; önce doğruluk, sonra gecikme ve Mbps gelir. | Cloudflare wire-format DoH kullanır. Bootstrap IP sabittir; TLS sertifika adı ve zinciri hiçbir zaman devre dışı bırakılmaz. |
 
 | Minimal Windows deneyimi | Hedefli paket işleme | Geliştirici görünürlüğü |
 |---|---|---|
@@ -49,11 +49,11 @@ Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı ge
 ## Prizma Adaptive
 
 ```text
-128 aday
+160 aday
    │
    ├── TLS split: 1 / 2 / alan adı ortası / çoklu split
    ├── sıra: ordered / reverse
-   ├── fake: kapalı / wrong-sequence / hedefli TTL varyasyonları
+   ├── fake: kapalı / wrong-sequence / wrong-checksum / hedefli TTL5 / TTL5+SEQ
    ├── QUIC: açık / kontrollü TCP fallback
    └── DNS: sistem / sertifika doğrulamalı DoH
             │
@@ -64,7 +64,7 @@ Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı ge
   erişim → gecikme → Mbps → ilk 5 → bu ağın kazananı
 ```
 
-Turnuva, kontrol hedefinin yanında Roblox ana sayfası, istemci ayar CDN'i, API, hesap ayarları ve gerçek zamanlı bağlantı uçlarını sınar. Her adaydan önce Windows DNS önbelleği temizlenir; motor durdurulup yeni argümanlarla tekrar başlatılır ve yeni HTTP bağlantı havuzu açılır. Toplam uygulama payload bütçesi **40 MB** ile sınırlıdır.
+Turnuva, kontrol hedefinin yanında Roblox ana sayfası, istemci ayar CDN'i, API, hesap ayarları ve gerçek zamanlı bağlantı uçlarını sınar. Her adaydan önce Windows DNS önbelleği temizlenir; motor durdurulup yeni argümanlarla tekrar başlatılır ve yeni HTTP bağlantı havuzu açılır. Toplam uygulama payload bütçesi **48 MB** ile sınırlıdır.
 
 Sertifika adı/zincir hatası, DNS bütünlük hatası veya zorunlu hedeflerden birine erişememe adayı kazanan olmaktan çıkarır. Ayrıntılı tasarım: [Adaptive profil laboratuvarı](docs/ADAPTIVE.md).
 
@@ -73,8 +73,8 @@ Sertifika adı/zincir hatası, DNS bütünlük hatası veya zorunlu hedeflerden 
 - TLS ClientHello'yu sabit konumlardan, SNI başlangıcından veya ikinci seviye alan adının ortasından bölme
 - Çoklu sıralı split ve zapret yaklaşımından esinlenen ters sıralı `multidisorder` benzeri gönderim
 - Geçmiş TCP sıra numaralı fake, tekrar/payload sınırı ve farklı IPv4 ID üretimi
-- Hedefli TTL fake seçeneği ve güvenli SNI maskeleme
-- HTTP `Host` başlığı dönüşümü
+- Hedefli TTL fake, hatalı checksum fake ve güvenli SNI maskeleme
+- `Host` başlığını değiştirmeden HTTP parçalama; isteğe bağlı `hoSt` dönüşümü
 - Cloudflare RFC 8484 wire-format DNS-over-HTTPS
 - İsteğe bağlı QUIC/HTTP3 engeliyle kontrollü TCP/TLS fallback
 - Alan adı son eki allowlist'i ve ilk ClientHello retransmit kesimi
@@ -110,11 +110,11 @@ WinDivert teknik olarak ayrı `.dll` ve imzalı `.sys` dosyaları gerektirir. Pa
 
 | Profil | Yaklaşım | Kullanım |
 |---|---|---|
-| **Türkiye · Dengeli** | Çoklu split, sınırlı fake, doğrulanmış DoH, QUIC açık | Genel başlangıç |
-| **Türkiye · Uyumluluk** | Sıralı SNI split, fake ve özel DNS kapalı | En az müdahale |
-| **Türkiye · Güçlü** | TTL + wrong-sequence fake ve TCP fallback | Son çare / agresif ağ |
-| **Türkiye · Roblox** | `roblox.com`, `rbx.com`, `rbxcdn.com` hedefli | Yalnız Roblox trafiği |
-| **Bu ağ için önerilen** | 128 adaydan yerel ölçümle seçilir | Tercih edilen seçenek |
+| **Türkiye · Ana** | Split=2, native reverse, hedefli TTL5, DoH; QUIC açık | Genel başlangıç |
+| **Türkiye · Uyumluluk** | Sıralı split=2 + SNI, fake ve özel DNS kapalı | En az müdahale |
+| **Türkiye · Güçlü** | Çoklu reverse, hedefli TTL5+SEQ ve TCP fallback | Son çare / agresif ağ |
+| **Türkiye · Roblox** | `roblox.com`, `rbx.com`, `rbxcdn.com` hedefli klasik reçete | Yalnız Roblox trafiği |
+| **Bu ağ için önerilen** | 160 adaydan yerel ölçümle seçilir | Tercih edilen seçenek |
 
 ## Windows hizmeti
 
@@ -128,7 +128,7 @@ Gereksinimler: Windows 10/11 x64, .NET 8 SDK ve PowerShell 5.1 veya 7+.
 dotnet restore Prizma.sln
 dotnet build Prizma.sln --configuration Release
 dotnet test Prizma.sln --configuration Release
-./scripts/Build-Release.ps1 -Version 1.2.0
+./scripts/Build-Release.ps1 -Version 1.3.0
 ```
 
 Paketleme betiği yalnız resmî WinDivert `v2.2.2` arşivini indirir ve sabit `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. Self-contained `win-x64` çıktı `artifacts/release/` altında oluşturulur.

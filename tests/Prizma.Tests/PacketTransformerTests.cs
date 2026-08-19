@@ -35,6 +35,33 @@ public sealed class PacketTransformerTests
     }
 
     [Fact]
+    public void HttpRequestCanBeDetectedWithoutRewritingHostHeader()
+    {
+        var payload = Encoding.ASCII.GetBytes("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n");
+        var packet = CreateTcpPacket(80, payload);
+        Assert.True(PacketLayout.TryParse(packet, out var layout));
+
+        Assert.True(PacketTransformer.IsHttpRequest(packet, layout));
+        var fragments = PacketTransformer.SplitTcpPacket(packet, layout, 2, reverse: true);
+
+        Assert.Equal(2, fragments.Count);
+        Assert.Contains("Host: example.com", Encoding.ASCII.GetString(packet));
+    }
+
+    [Fact]
+    public void CorruptTcpChecksum_FlipsChecksumAfterNormalCalculation()
+    {
+        var packet = CreateTcpPacket(443, [0x16, 0x03, 0x03]);
+        Assert.True(PacketLayout.TryParse(packet, out var layout));
+        BinaryPrimitives.WriteUInt16BigEndian(packet.AsSpan(layout.TransportHeaderOffset + 16, 2), 0xBEEF);
+
+        PacketTransformer.CorruptTcpChecksum(packet, layout);
+
+        Assert.Equal(0xBEEEu, BinaryPrimitives.ReadUInt16BigEndian(
+            packet.AsSpan(layout.TransportHeaderOffset + 16, 2)));
+    }
+
+    [Fact]
     public void CreateFakeTlsPacket_SetsLowTtlAndReplacesSni()
     {
         var packet = CreateTcpPacket(443, CreateClientHello("www.roblox.com"));

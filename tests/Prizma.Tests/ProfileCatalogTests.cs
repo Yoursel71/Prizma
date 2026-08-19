@@ -1,4 +1,5 @@
 using Prizma.Core.Profiles;
+using Prizma.Engine;
 
 namespace Prizma.Tests;
 
@@ -13,6 +14,17 @@ public sealed class ProfileCatalogTests
 
         Assert.Equal(4, profiles.Count);
         Assert.Single(profiles, profile => profile.Recommended);
+        var main = profiles.Single(profile => profile.Recommended);
+        Assert.Equal("tr-balanced", main.Id);
+        Assert.Equal("Türkiye • Ana", main.Name);
+        Assert.Contains("--tls-split", main.Arguments);
+        Assert.Contains("2", main.Arguments);
+        Assert.Contains("--reverse-fragments", main.Arguments);
+        Assert.Contains("--fake-ttl", main.Arguments);
+        Assert.Contains("--fake-host-suffix", main.Arguments);
+        Assert.Contains("--allow-quic", main.Arguments);
+        Assert.Contains("--dns-doh", main.Arguments);
+        Assert.All(profiles, profile => EngineOptions.Parse(profile.Arguments));
     }
 
     [Fact]

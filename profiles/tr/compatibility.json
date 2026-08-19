@@ -1,15 +1,15 @@
 {
   "id": "tr-compatibility",
   "name": "Türkiye • Uyumluluk",
-  "description": "TLS'i alan adının ortasından normal sırada böler; sahte paket, DNS yönlendirmesi ve QUIC engeli kullanmaz. En az müdahaleli başlangıçtır.",
+  "description": "TLS'i ikinci bayt ve SNI başlangıcından normal sırada böler; HTTP Host başlığını değiştirmez, sahte paket ve QUIC engeli kullanmaz.",
   "badge": "Düşük müdahale",
   "risk": "Low",
   "recommended": false,
   "arguments": [
-    "--tls-split", "1",
-    "--tls-split-marker", "midsld",
+    "--tls-split", "2",
+    "--tls-split-marker", "sni",
     "--ordered-fragments",
-    "--rewrite-http-host",
+    "--no-http-rewrite",
     "--no-fake",
     "--max-payload", "1500",
     "--allow-quic"
