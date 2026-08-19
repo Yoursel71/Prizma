@@ -4,6 +4,7 @@ public sealed unsafe class PacketEngine : IDisposable
 {
     private readonly EngineOptions _options;
     private readonly DnsRedirector? _dnsRedirector;
+    private readonly ClientHelloFlowTracker _flowTracker = new();
     private nint _handle;
 
     public PacketEngine(EngineOptions options)
@@ -95,9 +96,18 @@ public sealed unsafe class PacketEngine : IDisposable
             var modified = _options.RewriteHttpHost && PacketTransformer.RewriteHttpHost(packet, layout);
             if (isTls || modified)
             {
-                if (isTls && _options.FakeTtl is { } fakeTtl && PacketTransformer.CreateFakeTlsPacket(packet, layout, fakeTtl) is { } fake)
+                if (layout.PayloadLength > _options.MaxPayload)
                 {
-                    Send(fake, address);
+                    Send(packet, address);
+                    return;
+                }
+
+                if (isTls && (_options.FakeTtl is not null || _options.FakeSequenceOffset is not null) &&
+                    _flowTracker.ShouldSendFake(packet, layout) &&
+                    PacketTransformer.CreateFakeTlsPacket(packet, layout, _options.FakeTtl,
+                        _options.FakeSequenceOffset, _options.MaxPayload) is { } fake)
+                {
+                    for (var repeat = 0; repeat < _options.FakeRepeats; repeat++) Send(fake, address);
                 }
 
                 var positions = _options.SplitPositions.ToList();

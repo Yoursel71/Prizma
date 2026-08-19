@@ -24,6 +24,10 @@ Prizma artık `goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Uygulamanın k
 - Süreç içi IPv4 UDP DNS yönlendirmesi ve cevap geri eşleme
 - İsteğe bağlı QUIC/HTTP3 engeliyle tarayıcıyı işlenen TCP/TLS yoluna düşürme
 - Alan adı son eki allowlist'iyle yalnız hedeflenen HTTP/TLS akışlarını işleme
+- **Prizma Adaptive:** bu ağda 128 stratejiyi gerçek erişim, TLS gecikmesi ve küçük Mbps örneğiyle karşılaştırıp ilk 5'i sıralama
+- Ağ geçidi/DNS parmak izine bağlı yerel kazananı saklama; ağ değiştiğinde otomatik yeniden doğrulama
+- Geçmiş TCP sıra numaralı sahte paket, tekrar ve maksimum payload sınırı
+- İlk 5 ölçümünü, motor argümanlarını ve canlı logları gösteren geliştirici merkezi
 - Arayüz kapalıyken çalışan, otomatik başlayan gerçek Windows hizmet modu
 - Başlat Menüsü kısayolu oluşturan `Kur.cmd` ve uygulama içi İndir/Güncelle bağlantısı
 - Fail-open paket hattı: beklenmeyen işleme hatasında özgün paket yeniden gönderilir
@@ -79,10 +83,12 @@ Arayüzdeki **Hizmet olarak kur** düğmesi seçili profili `%ProgramData%\Prizm
 
 ## Profiller
 
-- **Türkiye • Dengeli:** `1+midsld` ters çoklu split, TTL=5 fake ve DNS yönlendirmesi; QUIC'e dokunmaz
-- **Türkiye • Uyumluluk:** SNI başlangıcında sıralı split; sahte paket ve QUIC engeli yok
-- **Türkiye • Güçlü:** Dengeli stratejiye ek QUIC engeli; tarayıcıyı TCP/TLS'e düşürür
+- **Türkiye • Dengeli:** `1+2+midsld` ters çoklu split, tek wrong-sequence fake ve DNS yönlendirmesi; QUIC'e dokunmaz
+- **Türkiye • Uyumluluk:** sıralı `midsld` split; fake, özel DNS ve QUIC engeli yok
+- **Türkiye • Güçlü:** TTL+wrong-sequence fake ve son çare QUIC engeli
 - **Türkiye • Roblox:** yalnız `roblox.com`, `rbx.com` ve `rbxcdn.com` HTTP/TLS trafiğine uygulanan hedefli profil
+
+**Önerilen profili bul** düğmesi 128 deterministik adayı tek tek ve aynı motor yaşam döngüsüyle dener. Erişemeyen hızlı bir profil kazanamaz: sıralama önce bütün hedeflere doğru TLS ile erişim, sonra düşük gecikme, ardından yüksek Mbps şeklindedir. Ölçüm 40 MB uygulama payload bütçesiyle sınırlıdır; sertifika doğrulaması hiçbir zaman kapatılmaz. Ayrıntılar: [Adaptive profil laboratuvarı](docs/ADAPTIVE.md).
 
 Profil seçenekleri tek bir shell komutuna çevrilmez. Her token `ProcessStartInfo.ArgumentList` ile iletilir ve motor bilinmeyen seçenekleri reddeder.
 

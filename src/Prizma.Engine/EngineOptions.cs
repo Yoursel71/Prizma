@@ -10,6 +10,9 @@ public sealed record EngineOptions(
     bool ReverseFragments,
     bool RewriteHttpHost,
     byte? FakeTtl,
+    int? FakeSequenceOffset,
+    int FakeRepeats,
+    int MaxPayload,
     bool BlockQuic,
     IReadOnlyList<string> HostSuffixes,
     IPAddress? DnsAddress,
@@ -24,6 +27,9 @@ public sealed record EngineOptions(
         var reverseFragments = true;
         var rewriteHttpHost = true;
         byte? fakeTtl = 5;
+        int? fakeSequenceOffset = null;
+        var fakeRepeats = 1;
+        var maxPayload = 1200;
         var blockQuic = false;
         var hostSuffixes = new List<string>();
         IPAddress? dnsAddress = null;
@@ -48,7 +54,17 @@ public sealed record EngineOptions(
                 case "--fake-ttl":
                     fakeTtl = checked((byte)ParseInt(ReadValue(arguments, ref index, argument), argument, 1, 255));
                     break;
-                case "--no-fake": fakeTtl = null; break;
+                case "--fake-seq-offset":
+                    fakeSequenceOffset = ParseInt(ReadValue(arguments, ref index, argument), argument, -1_000_000, 1_000_000);
+                    if (fakeSequenceOffset == 0) throw new ArgumentOutOfRangeException(argument, "Sıra numarası ofseti sıfır olamaz.");
+                    break;
+                case "--fake-repeats":
+                    fakeRepeats = ParseInt(ReadValue(arguments, ref index, argument), argument, 1, 3);
+                    break;
+                case "--max-payload":
+                    maxPayload = ParseInt(ReadValue(arguments, ref index, argument), argument, 64, 4096);
+                    break;
+                case "--no-fake": fakeTtl = null; fakeSequenceOffset = null; break;
                 case "--block-quic": blockQuic = true; break;
                 case "--allow-quic": blockQuic = false; break;
                 case "--host-suffix":
@@ -85,7 +101,8 @@ public sealed record EngineOptions(
         if (normalizedPositions.Length == 0) throw new ArgumentException("En az bir TLS bölme konumu gerekli.");
 
         return new EngineOptions(normalizedPositions, splitMarker, reverseFragments, rewriteHttpHost, fakeTtl,
-            blockQuic, hostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(), dnsAddress, dnsPort);
+            fakeSequenceOffset, fakeRepeats, maxPayload, blockQuic,
+            hostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(), dnsAddress, dnsPort);
     }
 
     public static string HelpText => """
@@ -96,6 +113,8 @@ public sealed record EngineOptions(
           --reverse-fragments | --ordered-fragments
           --rewrite-http-host | --no-http-rewrite
           --fake-ttl <1-255> | --no-fake
+          --fake-seq-offset <-1000000..1000000> (yanlış TCP sıra numaralı sahte paket)
+          --fake-repeats <1-3> --max-payload <64-4096>
           --block-quic | --allow-quic
           --host-suffix <alan[,alan...]> (yalnız eşleşen HTTP/TLS akışları)
           --dns-address <IPv4> [--dns-port <1-65535>]

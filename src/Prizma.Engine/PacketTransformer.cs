@@ -71,14 +71,24 @@ public static class PacketTransformer
     }
 
     public static byte[]? CreateFakeTlsPacket(ReadOnlySpan<byte> packet, PacketLayout layout, byte ttl)
+        => CreateFakeTlsPacket(packet, layout, ttl, null, 1200);
+
+    public static byte[]? CreateFakeTlsPacket(ReadOnlySpan<byte> packet, PacketLayout layout, byte? ttl,
+        int? sequenceOffset, int maxPayload)
     {
-        if (!IsTlsClientHello(packet, layout) || layout.PayloadLength > 1200)
+        if (!IsTlsClientHello(packet, layout) || layout.PayloadLength > maxPayload)
         {
             return null;
         }
 
         var fake = packet.ToArray();
-        fake[8] = ttl;
+        if (ttl is { } fakeTtl) fake[8] = fakeTtl;
+        if (sequenceOffset is { } offset)
+        {
+            var position = layout.TransportHeaderOffset + 4;
+            var sequence = BinaryPrimitives.ReadUInt32BigEndian(fake.AsSpan(position, 4));
+            BinaryPrimitives.WriteUInt32BigEndian(fake.AsSpan(position, 4), unchecked(sequence + (uint)offset));
+        }
         if (TryFindTlsSni(fake.AsSpan(layout.PayloadOffset, layout.PayloadLength), out var hostOffset, out var hostLength))
         {
             var host = fake.AsSpan(layout.PayloadOffset + hostOffset, hostLength);
@@ -107,9 +117,11 @@ public static class PacketTransformer
 
         var sequenceOffset = layout.TransportHeaderOffset + 4;
         var originalSequence = BinaryPrimitives.ReadUInt32BigEndian(packet.Slice(sequenceOffset, 4));
+        var originalIpId = BinaryPrimitives.ReadUInt16BigEndian(packet.Slice(4, 2));
         var flagsOffset = layout.TransportHeaderOffset + 13;
         var fragments = new List<byte[]>(positions.Length + 1);
         var start = 0;
+        var fragmentIndex = 0;
         foreach (var end in positions.Append(layout.PayloadLength))
         {
             var payloadLength = end - start;
@@ -117,10 +129,16 @@ public static class PacketTransformer
             packet[..layout.PayloadOffset].CopyTo(fragment);
             packet.Slice(layout.PayloadOffset + start, payloadLength).CopyTo(fragment.AsSpan(layout.PayloadOffset));
             SetIpv4Length(fragment, fragment.Length);
+            // Tek bir özgün TCP segmentinden üretilen parçaların aynı IPv4 ID'yi
+            // paylaşması bazı DPI'lar için güçlü bir parmak izidir. Normal işletim
+            // sistemi trafiğine daha yakın olmak için her parçaya ardışık kimlik ver.
+            BinaryPrimitives.WriteUInt16BigEndian(fragment.AsSpan(4, 2),
+                unchecked((ushort)(originalIpId + fragmentIndex)));
             BinaryPrimitives.WriteUInt32BigEndian(fragment.AsSpan(sequenceOffset, 4), originalSequence + checked((uint)start));
             if (end != layout.PayloadLength) fragment[flagsOffset] = (byte)(fragment[flagsOffset] & ~(0x01 | 0x08));
             fragments.Add(fragment);
             start = end;
+            fragmentIndex++;
         }
 
         if (reverse) fragments.Reverse();

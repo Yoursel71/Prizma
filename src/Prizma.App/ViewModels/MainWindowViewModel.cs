@@ -1,8 +1,13 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net.NetworkInformation;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
 using Prizma.App.Infrastructure;
+using Prizma.Core.Benchmarking;
 using Prizma.Core.Engine;
 using Prizma.Core.Models;
 using Prizma.Core.Profiles;
@@ -28,6 +33,10 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     private string _serviceStatusText = "Windows ile otomatik başlat";
     private string _serviceActionLabel = "Hizmet olarak kur";
     private bool _canManageService = true;
+    private bool _isBenchmarkRunning;
+    private double _benchmarkProgress;
+    private string _benchmarkProgressText = "Henüz ölçüm yapılmadı";
+    private string _recommendationHint = "128 yerel stratejiyi erişim, gecikme ve hızla karşılaştırır.";
 
     public MainWindowViewModel()
     {
@@ -42,6 +51,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         ToggleCommand = new AsyncRelayCommand(ToggleAsync, () => CanToggle);
         ManageServiceCommand = new AsyncRelayCommand(ManageServiceAsync, () => CanManageService);
         DownloadCommand = new AsyncRelayCommand(OpenDownloadAsync);
+        FindRecommendedProfileCommand = new AsyncRelayCommand(FindRecommendedProfileAsync, () => CanRunRecommendation);
         try
         {
             foreach (var profile in new ProfileCatalog().Load(profileDirectory))
@@ -54,6 +64,8 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
             AddLog("Profil hatası: " + exception.Message);
         }
 
+        BenchmarkTopResults = new ObservableCollection<BenchmarkResultViewModel>();
+        LoadRecommendationCache();
         SelectedProfile = Profiles.FirstOrDefault(profile => profile.Recommended) ?? Profiles.FirstOrDefault();
         ApplyState(_engine.State);
         _ = RefreshServiceStateAsync();
@@ -61,9 +73,31 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 
     public ObservableCollection<ConnectionProfile> Profiles { get; }
     public ObservableCollection<string> RecentLogs { get; }
+    public ObservableCollection<BenchmarkResultViewModel> BenchmarkTopResults { get; }
     public AsyncRelayCommand ToggleCommand { get; }
     public AsyncRelayCommand ManageServiceCommand { get; }
     public AsyncRelayCommand DownloadCommand { get; }
+    public AsyncRelayCommand FindRecommendedProfileCommand { get; }
+    public string EnginePath => _engine.EngineDirectory;
+    public string DeveloperButtonText => "Geliştirici";
+    public string RecommendationButtonText => IsBenchmarkRunning ? "Ölçülüyor…" : "✦  Önerilen profili bul";
+    public string RecommendationHint { get => _recommendationHint; private set => SetProperty(ref _recommendationHint, value); }
+    public bool IsBenchmarkRunning
+    {
+        get => _isBenchmarkRunning;
+        private set
+        {
+            if (!SetProperty(ref _isBenchmarkRunning, value)) return;
+            OnPropertyChanged(nameof(RecommendationButtonText));
+            OnPropertyChanged(nameof(CanRunRecommendation));
+            FindRecommendedProfileCommand.RaiseCanExecuteChanged();
+        }
+    }
+    public double BenchmarkProgress { get => _benchmarkProgress; private set => SetProperty(ref _benchmarkProgress, value); }
+    public string BenchmarkProgressText { get => _benchmarkProgressText; private set => SetProperty(ref _benchmarkProgressText, value); }
+    public bool CanRunRecommendation => !IsBenchmarkRunning &&
+                                        _serviceState == WindowsServiceState.NotInstalled &&
+                                        _currentState is EngineState.Stopped or EngineState.Faulted;
 
     public ConnectionProfile? SelectedProfile
     {
@@ -192,6 +226,94 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+    private Task FindRecommendedProfileAsync() => RunRecommendationAsync(showConfirmation: true);
+
+    public async Task RunRecommendationAsync(bool showConfirmation)
+    {
+        if (showConfirmation)
+        {
+            var confirmation = MessageBox.Show(
+                "Prizma bu ağda 128 güvenli stratejiyi sırayla dener. Ölçüm 3–10 dakika sürebilir ve en fazla 40 MB veri kullanır. Bu sırada bağlantı kısa aralıklarla yeniden kurulabilir.\n\nDevam edilsin mi?",
+                "Prizma Adaptive", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (confirmation != MessageBoxResult.Yes) return;
+        }
+
+        if (_serviceState != WindowsServiceState.NotInstalled)
+        {
+            if (showConfirmation)
+                MessageBox.Show("Ölçüm için önce kurulu Prizma hizmetini kaldırın. İki paket motoru aynı anda çalıştırılmaz.",
+                    "Prizma Adaptive", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        IsBenchmarkRunning = true;
+        CanToggle = false;
+        CanSelectProfile = false;
+        BenchmarkTopResults.Clear();
+        BenchmarkProgress = 0;
+        BenchmarkProgressText = "Adaylar hazırlanıyor…";
+        RecommendationHint = "Erişim başarısı öncelikli; hız ve gecikme eşitliği bozar.";
+
+        try
+        {
+            if (_engine.State == EngineState.Running) await _engine.StopAsync();
+            var candidates = new BenchmarkCandidateGenerator().Generate();
+            var options = BenchmarkRunOptions.CreateTurkeyDefaults();
+            var scorer = new ProfileBenchmarkScorer();
+            var runner = new ProfileBenchmarkRunner(_engine, new HttpConnectionProbe(), scorer);
+            var progress = new Progress<BenchmarkProgress>(item =>
+            {
+                BenchmarkProgress = item.TotalProfiles == 0 ? 0 : item.CompletedProfiles * 100d / item.TotalProfiles;
+                BenchmarkProgressText = item.CompletedProfiles >= item.TotalProfiles
+                    ? "Sonuçlar doğrulanıyor…"
+                    : $"{item.CompletedProfiles}/{item.TotalProfiles} · {item.CurrentProfile.Description}";
+            });
+
+            AddLog($"Adaptive turnuva başladı: {candidates.Count} aday, üst sınır 40 MB.");
+            var run = await runner.RunAsync(candidates, options, progress);
+            foreach (var ranked in run.TopProfiles)
+            {
+                BenchmarkTopResults.Add(BenchmarkResultViewModel.From(ranked, scorer));
+            }
+
+            var winner = run.TopProfiles.FirstOrDefault();
+            if (winner is null || winner.Result.AccessibilityRate < 1)
+            {
+                throw new InvalidOperationException("Bütün doğrulama hedeflerine ulaşan kararlı bir profil bulunamadı.");
+            }
+
+            var recommended = CreateRecommendedProfile(winner.Result);
+            var previous = Profiles.FirstOrDefault(profile => profile.Id == recommended.Id);
+            if (previous is not null) Profiles.Remove(previous);
+            Profiles.Insert(0, recommended);
+            SelectedProfile = recommended;
+            SaveRecommendationCache(recommended);
+
+            BenchmarkProgress = 100;
+            BenchmarkProgressText = $"Tamamlandı · 1 numara: {winner.Result.Profile.Description}";
+            RecommendationHint = $"Kazanan saklandı · {winner.Result.MedianLatency.TotalMilliseconds:0} ms · {winner.Result.ThroughputMbps:0.0} Mbps";
+            AddLog($"Adaptive kazananı saklandı. Veri: {run.DownloadedBytes / 1024d / 1024d:0.0} MB.");
+        }
+        catch (OperationCanceledException)
+        {
+            BenchmarkProgressText = "Ölçüm iptal edildi.";
+            AddLog("Adaptive ölçüm iptal edildi.");
+        }
+        catch (Exception exception)
+        {
+            BenchmarkProgressText = "Ölçüm tamamlanamadı";
+            RecommendationHint = exception.Message;
+            AddLog("Adaptive hata: " + exception.Message);
+            if (showConfirmation)
+                MessageBox.Show(exception.Message, "Prizma Adaptive", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            IsBenchmarkRunning = false;
+            ApplyState(_engine.State);
+        }
+    }
+
     private static Task OpenDownloadAsync()
     {
         Process.Start(new ProcessStartInfo
@@ -240,6 +362,8 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
             CanSelectProfile = false;
             OnPropertyChanged(nameof(IsRunning));
             OnPropertyChanged(nameof(StatusChipText));
+            OnPropertyChanged(nameof(CanRunRecommendation));
+            FindRecommendedProfileCommand.RaiseCanExecuteChanged();
             return;
         }
         switch (state)
@@ -302,6 +426,70 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 
         OnPropertyChanged(nameof(IsRunning));
         OnPropertyChanged(nameof(StatusChipText));
+        OnPropertyChanged(nameof(CanRunRecommendation));
+        FindRecommendedProfileCommand.RaiseCanExecuteChanged();
+    }
+
+    private static ConnectionProfile CreateRecommendedProfile(ProfileBenchmarkResult winner) => new()
+    {
+        Id = "local-adaptive-recommended",
+        Name = "Bu ağ için önerilen",
+        Description = $"128 aday arasından seçildi: {winner.Profile.Description}",
+        Badge = "ADAPTIVE · #1",
+        Risk = winner.Profile.Risk,
+        Recommended = true,
+        Arguments = winner.Profile.Arguments.ToArray()
+    };
+
+    private void LoadRecommendationCache()
+    {
+        try
+        {
+            var path = RecommendationCachePath();
+            if (!File.Exists(path)) return;
+            var cache = JsonSerializer.Deserialize<RecommendationCache>(File.ReadAllText(path));
+            if (cache is null) return;
+            if (!string.Equals(cache.NetworkSignature, CurrentNetworkSignature(), StringComparison.Ordinal))
+            {
+                AddLog("Ağ değişti; önceki Adaptive önerisi yeniden doğrulanmalı.");
+                return;
+            }
+
+            Profiles.Insert(0, cache.RecommendedProfile);
+            foreach (var result in cache.TopResults) BenchmarkTopResults.Add(result);
+            RecommendationHint = $"Bu ağ için son ölçüm: {cache.MeasuredAt.LocalDateTime:g}";
+        }
+        catch (Exception exception)
+        {
+            AddLog("Adaptive geçmişi okunamadı: " + exception.Message);
+        }
+    }
+
+    private void SaveRecommendationCache(ConnectionProfile recommended)
+    {
+        var path = RecommendationCachePath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var cache = new RecommendationCache(
+            CurrentNetworkSignature(), DateTimeOffset.Now, recommended, BenchmarkTopResults.ToArray());
+        File.WriteAllText(path, JsonSerializer.Serialize(cache, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static string RecommendationCachePath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Prizma", "profile-lab.json");
+
+    private static string CurrentNetworkSignature()
+    {
+        var material = string.Join('|', NetworkInterface.GetAllNetworkInterfaces()
+            .Where(adapter => adapter.OperationalStatus == OperationalStatus.Up &&
+                              adapter.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Select(adapter =>
+            {
+                var properties = adapter.GetIPProperties();
+                return string.Join(';', adapter.Id,
+                    string.Join(',', properties.GatewayAddresses.Select(item => item.Address.ToString()).Order()),
+                    string.Join(',', properties.DnsAddresses.Select(item => item.ToString()).Order()));
+            }).Order());
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material)))[..16];
     }
 
     private static string? FindExternalEngineProcess()
@@ -337,3 +525,23 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
     }
 }
+
+public sealed record BenchmarkResultViewModel(
+    int Rank, string ProfileName, double Score, double LatencyMs,
+    double ThroughputMbps, double SuccessRate, string Grade)
+{
+    public static BenchmarkResultViewModel From(RankedProfileResult ranked, ProfileBenchmarkScorer scorer)
+    {
+        var score = scorer.CalculateScore(ranked.Result);
+        var grade = score switch { >= 90 => "A", >= 80 => "B", >= 70 => "C", >= 55 => "D", _ => "E" };
+        return new BenchmarkResultViewModel(ranked.Rank, ranked.Result.Profile.Name, score,
+            ranked.Result.MedianLatency == TimeSpan.MaxValue ? 0 : ranked.Result.MedianLatency.TotalMilliseconds,
+            ranked.Result.ThroughputMbps, ranked.Result.AccessibilityRate * 100, grade);
+    }
+}
+
+public sealed record RecommendationCache(
+    string NetworkSignature,
+    DateTimeOffset MeasuredAt,
+    ConnectionProfile RecommendedProfile,
+    IReadOnlyList<BenchmarkResultViewModel> TopResults);

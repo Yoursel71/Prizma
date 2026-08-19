@@ -49,6 +49,19 @@ public sealed class PacketTransformerTests
     }
 
     [Fact]
+    public void CreateFakeTlsPacket_CanUsePastSequenceWithoutChangingTtl()
+    {
+        var packet = CreateTcpPacket(443, CreateClientHello("www.roblox.com"));
+        Assert.True(PacketLayout.TryParse(packet, out var layout));
+
+        var fake = PacketTransformer.CreateFakeTlsPacket(packet, layout, null, -100, 1200);
+
+        Assert.NotNull(fake);
+        Assert.Equal(64, fake[8]);
+        Assert.Equal(900u, BinaryPrimitives.ReadUInt32BigEndian(fake.AsSpan(24, 4)));
+    }
+
+    [Fact]
     public void ResolveTlsSplitMarker_FindsMiddleOfSecondLevelDomain()
     {
         var packet = CreateTcpPacket(443, CreateClientHello("www.roblox.com"));
@@ -74,6 +87,8 @@ public sealed class PacketTransformerTests
         Assert.Equal(1007u, BinaryPrimitives.ReadUInt32BigEndian(fragments[0].AsSpan(24, 4)));
         Assert.Equal(1001u, BinaryPrimitives.ReadUInt32BigEndian(fragments[1].AsSpan(24, 4)));
         Assert.Equal(1000u, BinaryPrimitives.ReadUInt32BigEndian(fragments[2].AsSpan(24, 4)));
+        Assert.Equal(new ushort[] { 2, 1, 0 }, fragments
+            .Select(fragment => BinaryPrimitives.ReadUInt16BigEndian(fragment.AsSpan(4, 2))).ToArray());
     }
 
     private static byte[] CreateTcpPacket(ushort destinationPort, byte[] payload)

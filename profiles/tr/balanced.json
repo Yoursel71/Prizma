@@ -1,13 +1,21 @@
 {
   "id": "tr-balanced",
   "name": "Türkiye • Dengeli",
-  "description": "TLS'i ilk bayt ve alan adının ortasından bölüp parçaları ters yollar; TTL=5 sahte ClientHello ve süreç içi DNS yönlendirmesi uygular.",
+  "description": "TLS'i ilk bayt ve alan adının ortasından bölüp parçaları ters yollar; sunucuya ulaşsa bile geçersiz kalan sıra numaralı tek sahte paket ve süreç içi DNS yönlendirmesi uygular.",
   "badge": "Önerilen • Türkiye",
-  "risk": "Low",
+  "risk": "Medium",
   "recommended": true,
   "arguments": [
-    "--strategy", "turkey-auto",
-    "--fake-ttl", "5",
+    "--tls-split", "1",
+    "--tls-split", "2",
+    "--tls-split-marker", "midsld",
+    "--reverse-fragments",
+    "--rewrite-http-host",
+    "--no-fake",
+    "--fake-seq-offset", "-10000",
+    "--fake-repeats", "1",
+    "--max-payload", "1500",
+    "--allow-quic",
     "--dns-address", "77.88.8.8",
     "--dns-port", "1253"
   ]

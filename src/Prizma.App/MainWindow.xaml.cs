@@ -15,6 +15,8 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
     }
 
+    internal MainWindowViewModel ViewModel => _viewModel;
+
     protected override void OnClosing(CancelEventArgs e)
     {
         _viewModel.DisposeAsync().AsTask().GetAwaiter().GetResult();
@@ -36,4 +38,25 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void DeveloperButton_Click(object sender, RoutedEventArgs e)
+    {
+        var existingWindow = OwnedWindows.OfType<DeveloperWindow>().FirstOrDefault();
+        if (existingWindow is not null)
+        {
+            if (existingWindow.WindowState == WindowState.Minimized)
+            {
+                existingWindow.WindowState = WindowState.Normal;
+            }
+
+            existingWindow.Activate();
+            return;
+        }
+
+        new DeveloperWindow
+        {
+            Owner = this,
+            DataContext = _viewModel
+        }.Show();
+    }
 }

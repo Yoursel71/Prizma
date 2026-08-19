@@ -20,8 +20,24 @@ public sealed class EngineOptionsTests
         Assert.True(options.ReverseFragments);
         Assert.True(options.RewriteHttpHost);
         Assert.Equal((byte)5, options.FakeTtl);
+        Assert.Null(options.FakeSequenceOffset);
+        Assert.Equal(1, options.FakeRepeats);
+        Assert.Equal(1200, options.MaxPayload);
         Assert.Equal(IPAddress.Parse("77.88.8.8"), options.DnsAddress);
         Assert.Equal((ushort)1253, options.DnsPort);
+    }
+
+    [Fact]
+    public void Parse_WrongSequenceProfileSupportsBoundedRepeatAndPayload()
+    {
+        var options = EngineOptions.Parse([
+            "--no-fake", "--fake-seq-offset", "-10000", "--fake-repeats", "2", "--max-payload", "900"
+        ]);
+
+        Assert.Null(options.FakeTtl);
+        Assert.Equal(-10000, options.FakeSequenceOffset);
+        Assert.Equal(2, options.FakeRepeats);
+        Assert.Equal(900, options.MaxPayload);
     }
 
     [Fact]

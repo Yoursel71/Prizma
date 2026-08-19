@@ -1,13 +1,21 @@
 {
   "id": "tr-aggressive",
   "name": "Türkiye • Güçlü",
-  "description": "1+midsld ters bölme ve TTL=5 sahtesine ek olarak QUIC/HTTP3'ü kapatıp tarayıcıyı işlenebilen TCP/TLS'e düşürür.",
+  "description": "1+2+midsld ters bölme, TTL=5 ve geçmiş sıra numarasını birlikte kullanan sahte paket; son çare olarak QUIC/HTTP3 geri düşürmesi uygular.",
   "badge": "Güçlü",
   "risk": "High",
   "recommended": false,
   "arguments": [
-    "--strategy", "turkey-strong",
+    "--tls-split", "1",
+    "--tls-split", "2",
+    "--tls-split-marker", "midsld",
+    "--reverse-fragments",
+    "--rewrite-http-host",
     "--fake-ttl", "5",
+    "--fake-seq-offset", "-10000",
+    "--fake-repeats", "1",
+    "--max-payload", "1500",
+    "--block-quic",
     "--dns-address", "77.88.8.8",
     "--dns-port", "1253"
   ]
