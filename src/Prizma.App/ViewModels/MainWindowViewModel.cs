@@ -129,7 +129,8 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
     }
     public bool IsRunning => _serviceState == WindowsServiceState.Running || _currentState == EngineState.Running;
-    public string StatusChipText => _serviceState == WindowsServiceState.Running ? "HİZMET AKTİF" : _currentState switch
+    public string StatusChipText => IsBenchmarkRunning ? "ADAPTIVE ÖLÇÜM" :
+        _serviceState == WindowsServiceState.Running ? "HİZMET AKTİF" : _currentState switch
     {
         EngineState.Running => "KORUMA AKTİF",
         EngineState.Starting => "MOTOR HAZIRLANIYOR",
@@ -267,6 +268,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
                 BenchmarkProgressText = item.CompletedProfiles >= item.TotalProfiles
                     ? "Sonuçlar doğrulanıyor…"
                     : $"{item.CompletedProfiles}/{item.TotalProfiles} · {item.CurrentProfile.Description}";
+                StateDescription = BenchmarkProgressText;
             });
 
             AddLog($"Adaptive turnuva başladı: {candidates.Count} aday, üst sınır 40 MB.");
@@ -348,6 +350,23 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     private void ApplyState(EngineState state)
     {
         _currentState = state;
+        if (IsBenchmarkRunning)
+        {
+            StateTitle = "Profil turnuvası";
+            StateDescription = BenchmarkProgressText;
+            ActionLabel = "Ölçülüyor";
+            PowerGlyph = "…";
+            HealthTitle = "Bağlantı karşılaştırılıyor";
+            HealthDescription = "Erişim öncelikli; gecikme ve Mbps eşitliği bozuyor.";
+            CanToggle = false;
+            CanSelectProfile = false;
+            OnPropertyChanged(nameof(IsRunning));
+            OnPropertyChanged(nameof(StatusChipText));
+            OnPropertyChanged(nameof(CanRunRecommendation));
+            FindRecommendedProfileCommand.RaiseCanExecuteChanged();
+            return;
+        }
+
         if (_serviceState != WindowsServiceState.NotInstalled)
         {
             StateTitle = _serviceState == WindowsServiceState.Running ? "Her zaman açık" : "Hizmet bekliyor";
