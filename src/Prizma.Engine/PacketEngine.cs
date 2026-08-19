@@ -27,7 +27,10 @@ public sealed unsafe class PacketEngine : IDisposable
         }
 
         using var registration = cancellationToken.Register(StopReceiving);
-        Console.WriteLine($"Prizma.Engine hazır • TLS split={string.Join(',', _options.SplitPositions)}+{_options.TlsSplitMarker} • reverse={_options.ReverseFragments} • QUIC={(_options.BlockQuic ? "kapalı" : "açık")} • DNS={_options.DnsAddress?.ToString() ?? "kapalı"}");
+        var dnsLabel = _options.DnsOverHttpsEndpoint is not null
+            ? $"DoH/{_options.DnsOverHttpsEndpoint.Host}"
+            : _options.DnsAddress?.ToString() ?? "kapalı";
+        Console.WriteLine($"Prizma.Engine hazır • TLS split={string.Join(',', _options.SplitPositions)}+{_options.TlsSplitMarker} • reverse={_options.ReverseFragments} • QUIC={(_options.BlockQuic ? "kapalı" : "açık")} • DNS={dnsLabel}");
         var receiveBuffer = new byte[ushort.MaxValue + 40];
         while (!cancellationToken.IsCancellationRequested)
         {
