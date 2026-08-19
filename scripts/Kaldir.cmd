@@ -1,2 +1,2 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Uninstall-ZapretTR.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Uninstall-Prizma.ps1"

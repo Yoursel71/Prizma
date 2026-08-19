@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Prizma.Core\Prizma.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Prizma</AssemblyName>
+    <RootNamespace>Prizma.App</RootNamespace>
+    <Version>1.2.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Authors>Prizma contributors</Authors>
+    <Description>Türkiye için açık kaynaklı bağlantı dayanıklılığı uygulaması</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\profiles\tr\*.json" Link="profiles\tr\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

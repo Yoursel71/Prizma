@@ -5,9 +5,9 @@ Katkılar küçük, test edilebilir ve tek amaçlı olmalıdır. Yeni bir profil
 Değişiklik göndermeden önce:
 
 ```powershell
-dotnet format ZapretTR.sln --verify-no-changes
-dotnet build ZapretTR.sln --configuration Release
-dotnet test ZapretTR.sln --configuration Release
+dotnet format Prizma.sln --verify-no-changes
+dotnet build Prizma.sln --configuration Release
+dotnet test Prizma.sln --configuration Release
 ```
 
 GUI değişikliklerine açık ve koyu arka planda ekran görüntüsü ekleyin. Yeni motor seçenekleri upstream `docs/manual.en.md` ile uyumlu olmalı ve mümkünse dry-run testi içermelidir.

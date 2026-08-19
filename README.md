@@ -1,98 +1,157 @@
-# ZapretTR
+<p align="center">
+  <img src="docs/assets/prizma-hero.svg" alt="Prizma — İnternet, kendi yönünde" width="100%" />
+</p>
 
-Türkiye'deki Windows kullanıcıları için açık kaynaklı ve minimalist bağlantı koruma uygulaması.
+<p align="center">
+  <a href="https://github.com/Yoursel71/Prizma/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Yoursel71/Prizma?style=for-the-badge&color=6D7CFF"></a>
+  <a href="https://github.com/Yoursel71/Prizma/actions/workflows/prizma.yml"><img alt="Windows CI" src="https://img.shields.io/github/actions/workflow/status/Yoursel71/Prizma/prizma.yml?branch=master&style=for-the-badge&label=Windows%20CI"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/Yoursel71/Prizma?style=for-the-badge&color=49CFAE"></a>
+  <img alt="Windows 10 ve 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-1591EA?style=for-the-badge&logo=windows11&logoColor=white">
+</p>
 
-ZapretTR artık `goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Uygulamanın kendi [.NET 8 motoru](src/ZapretTR.Engine/) WinDivert'e doğrudan bağlanır; GoodbyeDPI'nin native fragmentation yaklaşımı ile zapret'in ters-sıralı desync fikrini tek, denetlenebilir paket hattında yeniden uygular.
+<p align="center">
+  <strong>Türkiye ağları için yerel, açık kaynak ve ölçülebilir bağlantı dayanıklılığı.</strong><br>
+  Tek düğme. Kendi paket motoru. Ağınıza göre seçilen gerçek profil.
+</p>
+
+---
+
+## Prizma nedir?
+
+Prizma, Windows trafiğindeki DPI kaynaklı bağlantı bozulmalarına karşı geliştirilmiş minimalist bir masaüstü uygulamasıdır. Hazır bir komut dosyasını körlemesine çalıştırmak yerine, ağınızda **128 güvenli stratejiyi** sırayla ölçer; erişim, TLS gecikmesi ve küçük bir bant genişliği örneğine göre en uygun profili yerel olarak seçer.
+
+`goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Projeye ait [.NET 8 paket motoru](src/Prizma.Engine/) WinDivert'e doğrudan bağlanır; incelenen açık kaynak DPI dayanıklılığı yaklaşımlarını tek, test edilebilir ve allowlist kontrollü bir hatta yeniden uygular.
 
 > [!IMPORTANT]
-> ZapretTR bağımsız bir topluluk projesidir; GoodbyeDPI, zapret veya WinDivert projeleriyle resmî bağlantısı yoktur. Ağ davranışı operatöre göre değişebilir. Yalnızca bulunduğunuz yerde yasal olan amaçlarla kullanın.
+> Prizma bağımsız bir topluluk projesidir; GoodbyeDPI, zapret veya WinDivert ile resmî bağlantısı yoktur. Ağ sonuçları operatöre, bölgeye ve zamana göre değişebilir. Yalnızca bulunduğunuz yerde yasal olan amaçlarla kullanın.
 
-## Neler var?
+## Neden Prizma?
 
-- Windows 10/11 için sade .NET 8 WPF arayüzü
-- Uygulamaya ait `ZapretTR.Engine.exe`; üçüncü taraf DPI motor binary'si yok
-- TLS ClientHello'yu sabit konumların yanında SNI başlangıcı veya ikinci seviye alan adının ortasından bölme
-- Zapret tarzı çoklu `multidisorder` benzeri ters parça sıralaması
-- TTL=5 sahte TLS paketi ve güvenli SNI maskeleme
+| Yerel motor | Adaptive profil laboratuvarı | Güvenli DNS hattı |
+|---|---|---|
+| Üçüncü taraf DPI motoru çalıştırmaz. C# kaynak kodu, argüman allowlist'i ve paket testleri bu depodadır. | 128 adayı aynı yaşam döngüsünde dener. Erişemeyen hızlı profil kazanamaz; önce doğruluk, sonra gecikme ve Mbps gelir. | Cloudflare wire-format DoH kullanır. Bootstrap IP sabittir; TLS sertifika adı ve zinciri hiçbir zaman devre dışı bırakılmaz. |
+
+| Minimal Windows deneyimi | Hedefli paket işleme | Geliştirici görünürlüğü |
+|---|---|---|
+| Tek ekran, gerçek aç/kapat düğmesi, profil önerici ve isteğe bağlı otomatik başlayan Windows hizmeti. | TLS/HTTP akışları alan adı allowlist'iyle işlenebilir. QUIC engeli yalnız gereken profillerde kullanılır. | İlk 5 ölçüm, canlı motor günlükleri, aktif argümanlar, ping, Mbps, başarı oranı ve hata özeti tek ekrandadır. |
+
+## Hızlı başlangıç
+
+1. [En son sürümü indirin](https://github.com/Yoursel71/Prizma/releases/latest) ve ZIP'i çıkarın.
+2. `Kur.cmd` dosyasını çalıştırın; Prizma `%ProgramFiles%\Prizma` altına kurulur.
+3. Uygulamada **Önerilen profili bul** seçeneğini çalıştırın.
+4. Turnuva tamamlandığında **Başlat** düğmesine basın.
+5. Arayüz açık kalmasın istiyorsanız **Hizmet olarak kur** seçeneğini kullanın.
+
+> [!TIP]
+> Ağ veya modem değiştiğinde önericiyi yeniden çalıştırın. Prizma kazananı ağ parmak iziyle saklar ve başka ağın sonucunu evrensel profil gibi kullanmaz.
+
+## Prizma Adaptive
+
+```text
+128 aday
+   │
+   ├── TLS split: 1 / 2 / alan adı ortası / çoklu split
+   ├── sıra: ordered / reverse
+   ├── fake: kapalı / wrong-sequence / hedefli TTL varyasyonları
+   ├── QUIC: açık / kontrollü TCP fallback
+   └── DNS: sistem / sertifika doğrulamalı DoH
+            │
+            ▼
+  Roblox web + istemci CDN + API + gerçek zamanlı uçlar
+            │
+            ▼
+  erişim → gecikme → Mbps → ilk 5 → bu ağın kazananı
+```
+
+Turnuva, kontrol hedefinin yanında Roblox ana sayfası, istemci ayar CDN'i, API, hesap ayarları ve gerçek zamanlı bağlantı uçlarını sınar. Her adaydan önce Windows DNS önbelleği temizlenir; motor durdurulup yeni argümanlarla tekrar başlatılır ve yeni HTTP bağlantı havuzu açılır. Toplam uygulama payload bütçesi **40 MB** ile sınırlıdır.
+
+Sertifika adı/zincir hatası, DNS bütünlük hatası veya zorunlu hedeflerden birine erişememe adayı kazanan olmaktan çıkarır. Ayrıntılı tasarım: [Adaptive profil laboratuvarı](docs/ADAPTIVE.md).
+
+## Motor yetenekleri
+
+- TLS ClientHello'yu sabit konumlardan, SNI başlangıcından veya ikinci seviye alan adının ortasından bölme
+- Çoklu sıralı split ve zapret yaklaşımından esinlenen ters sıralı `multidisorder` benzeri gönderim
+- Geçmiş TCP sıra numaralı fake, tekrar/payload sınırı ve farklı IPv4 ID üretimi
+- Hedefli TTL fake seçeneği ve güvenli SNI maskeleme
 - HTTP `Host` başlığı dönüşümü
-- Süreç içi IPv4 UDP DNS yönlendirmesi ve cevap geri eşleme
-- İsteğe bağlı QUIC/HTTP3 engeliyle tarayıcıyı işlenen TCP/TLS yoluna düşürme
-- Alan adı son eki allowlist'iyle yalnız hedeflenen HTTP/TLS akışlarını işleme
-- Arayüz kapalıyken çalışan, otomatik başlayan gerçek Windows hizmet modu
-- Başlat Menüsü kısayolu oluşturan `Kur.cmd` ve uygulama içi İndir/Güncelle bağlantısı
-- Fail-open paket hattı: beklenmeyen işleme hatasında özgün paket yeniden gönderilir
-- Bilinmeyen profil argümanlarını reddeden allowlist CLI
-- Yönetici yetkili motor yaşam döngüsü, log ve kapanış temizliği
-- Resmî WinDivert 2.2.2 için sabit SHA-256 doğrulamalı paketleme
-- Self-contained `win-x64` release ve sürücüsüz saf paket testleri
+- Cloudflare RFC 8484 wire-format DNS-over-HTTPS
+- İsteğe bağlı QUIC/HTTP3 engeliyle kontrollü TCP/TLS fallback
+- Alan adı son eki allowlist'i ve ilk ClientHello retransmit kesimi
+- Fail-open davranışı: beklenmeyen paket işleme hatasında özgün paket geri gönderilir
+- `ProcessStartInfo.ArgumentList` ile token bazlı süreç başlatma ve bilinmeyen argümanı reddeden CLI
 
 ## Mimari
 
 ```text
-ZapretTR.App       Minimal WPF arayüzü
-      │
-      ▼
-ZapretTR.Core      Profil, süreç ve durum yönetimi
-      │
-      ▼
-ZapretTR.Engine    Bize ait paket ayrıştırma/desync motoru
-      │
-      ▼
-WinDivert.dll + WinDivert64.sys
+┌─────────────────────────────────────┐
+│ Prizma.App                          │
+│ Minimal WPF arayüz · Adaptive Lab   │
+└──────────────────┬──────────────────┘
+                   │ güvenli profil tokenları
+┌──────────────────▼──────────────────┐
+│ Prizma.Core                         │
+│ Profil · benchmark · süreç · hizmet │
+└──────────────────┬──────────────────┘
+                   │ izole yerel süreç
+┌──────────────────▼──────────────────┐
+│ Prizma.Engine                       │
+│ DNS · TLS/HTTP ayrıştırma · desync  │
+└──────────────────┬──────────────────┘
+                   │ P/Invoke
+┌──────────────────▼──────────────────┐
+│ WinDivert.dll + WinDivert64.sys     │
+└─────────────────────────────────────┘
 ```
 
-WinDivert sürücüsü teknik olarak ayrı `.dll` ve imzalı `.sys` dosyaları gerektirir. Bunun dışında GoodbyeDPI veya zapret çalıştırılabilir dosyası pakete konmaz.
+WinDivert teknik olarak ayrı `.dll` ve imzalı `.sys` dosyaları gerektirir. Paket bunun dışında GoodbyeDPI, zapret veya başka bir DPI aracının çalıştırılabilir dosyasını içermez.
 
-## Derleme
+## Yerleşik profiller
 
-Gereksinimler:
+| Profil | Yaklaşım | Kullanım |
+|---|---|---|
+| **Türkiye · Dengeli** | Çoklu split, sınırlı fake, doğrulanmış DoH, QUIC açık | Genel başlangıç |
+| **Türkiye · Uyumluluk** | Sıralı SNI split, fake ve özel DNS kapalı | En az müdahale |
+| **Türkiye · Güçlü** | TTL + wrong-sequence fake ve TCP fallback | Son çare / agresif ağ |
+| **Türkiye · Roblox** | `roblox.com`, `rbx.com`, `rbxcdn.com` hedefli | Yalnız Roblox trafiği |
+| **Bu ağ için önerilen** | 128 adaydan yerel ölçümle seçilir | Tercih edilen seçenek |
 
-- Windows 10/11 x64
-- .NET 8 SDK
-- PowerShell 5.1 veya 7+
+## Windows hizmeti
+
+**Hizmet olarak kur**, seçili profili `%ProgramData%\Prizma` altına atomik olarak kopyalar ve `Prizma.Engine` hizmetini otomatik başlangıçla kaydeder. GUI kapalıyken de çalışır. Profil değiştirmek için hizmeti kaldırıp yeni profille yeniden kurun; iki paket motorunun aynı anda çalışmasına izin verilmez.
+
+## Kaynaktan derleme
+
+Gereksinimler: Windows 10/11 x64, .NET 8 SDK ve PowerShell 5.1 veya 7+.
 
 ```powershell
-dotnet restore ZapretTR.sln
-dotnet build ZapretTR.sln --configuration Release
-dotnet test ZapretTR.sln --configuration Release
+dotnet restore Prizma.sln
+dotnet build Prizma.sln --configuration Release
+dotnet test Prizma.sln --configuration Release
+./scripts/Build-Release.ps1 -Version 1.2.0
 ```
 
-Self-contained paket:
+Paketleme betiği yalnız resmî WinDivert `v2.2.2` arşivini indirir ve sabit `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. Self-contained `win-x64` çıktı `artifacts/release/` altında oluşturulur.
 
-```powershell
-./scripts/Build-Release.ps1 -Version 0.4.0
-```
+## Bilinçli sınırlar
 
-Betik yalnız resmî WinDivert `v2.2.2` arşivini indirir ve `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. GUI ve motor doğrudan bu kaynak ağacından derlenir. Çıktı `artifacts/release/` altındadır.
-
-## Kurulum
-
-GitHub Releases sayfasından ZIP'i indirip çıkarın ve `Kur.cmd` dosyasını çalıştırın. Betik uygulamayı `%ProgramFiles%\ZapretTR` altına kopyalar, Başlat Menüsü kısayolunu oluşturur ve uygulamayı açar. `Kaldir.cmd` kısayolu, hizmeti ve kurulu dosyaları kaldırır.
-
-Arayüzdeki **Hizmet olarak kur** düğmesi seçili profili `%ProgramData%\ZapretTR` altına kopyalar ve `ZapretTR.Engine` hizmetini otomatik başlangıçla kaydeder. Bundan sonra GUI'nin açık kalması gerekmez. Profil değiştirmek için hizmeti kaldırıp yeni profille yeniden kurun.
-
-## Profiller
-
-- **Türkiye • Dengeli:** `1+midsld` ters çoklu split, TTL=5 fake ve DNS yönlendirmesi; QUIC'e dokunmaz
-- **Türkiye • Uyumluluk:** SNI başlangıcında sıralı split; sahte paket ve QUIC engeli yok
-- **Türkiye • Güçlü:** Dengeli stratejiye ek QUIC engeli; tarayıcıyı TCP/TLS'e düşürür
-- **Türkiye • Roblox:** yalnız `roblox.com`, `rbx.com` ve `rbxcdn.com` HTTP/TLS trafiğine uygulanan hedefli profil
-
-Profil seçenekleri tek bir shell komutuna çevrilmez. Her token `ProcessStartInfo.ArgumentList` ile iletilir ve motor bilinmeyen seçenekleri reddeder.
-
-## Mevcut sınırlar
-
-0.4.0 motorunun bilinçli sınırları:
-
-- IPv4 TCP 80/443 ve IPv4 UDP DNS işlenir.
+- Motor şu an IPv4 TCP 80/443 ve IPv4 UDP DNS trafiğini işler.
 - IPv6 DNS ve birden fazla TCP paketine yayılan TLS ClientHello reassembly henüz yoktur.
-- QUIC paketi sahteleştirilmez; Güçlü profil UDP/443'ü düşürerek istemcinin TCP/TLS'e geri dönmesini sağlar.
-- Alan adı filtresi ilk HTTP isteği veya TLS ClientHello üzerinden çalışır; IP tabanlı akış takibi yapmaz.
-- WinDivert sürücüsü üçüncü taraf ve dinamik bağımlılıktır.
-- Erken geliştirme paketleri kod imzalı değildir.
+- QUIC paketi sahteleştirilmez; yalnız güçlü profillerde UDP/443 kontrollü olarak düşürülür.
+- Alan adı filtresi ilk HTTP isteği veya TLS ClientHello üzerinden çalışır; genel amaçlı VPN değildir.
+- WinDivert üçüncü taraf dinamik bağımlılıktır.
+- Erken geliştirme paketleri kod imzalı değildir; yalnız bu deponun Releases sayfasından indirin.
 
-## Kaynak ve lisans
+## Kaynak, güvenlik ve lisans
 
-Paket işleme tasarımı [GoodbyeDPI-Turkey `release-0.2.3rc3-turkey`](https://github.com/cagritaskn/GoodbyeDPI-Turkey/tree/02fee64e1e44759b38aa4b05a46f8bcedaa3bec8), [ValdikSS/GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) ve [bol-van/zapret2](https://github.com/bol-van/zapret2) kaynakları incelenerek C#'ta yeniden uygulanmıştır. WinDivert dinamik olarak LGPLv3 seçeneği altında kullanılır.
+Tasarım; [GoodbyeDPI-Turkey](https://github.com/cagritaskn/GoodbyeDPI-Turkey/tree/02fee64e1e44759b38aa4b05a46f8bcedaa3bec8), [ValdikSS/GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI), [bol-van/zapret2](https://github.com/bol-van/zapret2) ve [hufrea/byedpi](https://github.com/hufrea/byedpi) projelerinin belgelenmiş yaklaşımları incelenerek C#'ta yeniden uygulanmıştır. Üçüncü taraf motor kaynakları projeye kopyalanmaz ve onların çalıştırılabilir dosyaları dağıtılmaz.
 
-Proje kodu [LICENSE](LICENSE) altındadır. Kaynak sabitlemeleri ve üçüncü taraf bildirimleri için [NOTICE.md](NOTICE.md), güvenlik bildirimi için [SECURITY.md](SECURITY.md) dosyasına bakın.
+- Proje lisansı: [MIT](LICENSE)
+- Üçüncü taraf bildirimleri ve sabitlenmiş kaynaklar: [NOTICE.md](NOTICE.md)
+- Güvenlik politikası: [SECURITY.md](SECURITY.md)
+- Sürüm notları: [CHANGELOG.md](CHANGELOG.md)
+
+<p align="center">
+  <strong>PRİZMA</strong><br>
+  <sub>Bağlantıyı tahmin etmez. Ölçer.</sub>
+</p>
