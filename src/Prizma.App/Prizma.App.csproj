@@ -13,7 +13,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>Prizma</AssemblyName>
     <RootNamespace>Prizma.App</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Authors>Prizma contributors</Authors>
     <Description>Türkiye için açık kaynaklı bağlantı dayanıklılığı uygulaması</Description>

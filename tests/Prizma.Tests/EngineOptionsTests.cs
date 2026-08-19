@@ -6,6 +6,18 @@ namespace Prizma.Tests;
 public sealed class EngineOptionsTests
 {
     [Fact]
+    public void Parse_DefaultsToSplitWithoutGlobalFake()
+    {
+        var options = EngineOptions.Parse([]);
+
+        Assert.Equal([2], options.SplitPositions);
+        Assert.True(options.ReverseFragments);
+        Assert.Null(options.FakeTtl);
+        Assert.Null(options.FakeSequenceOffset);
+        Assert.False(options.FakeWrongChecksum);
+    }
+
+    [Fact]
     public void Parse_TurkeyProfileBuildsUnifiedStrategy()
     {
         var options = EngineOptions.Parse([
@@ -21,6 +33,7 @@ public sealed class EngineOptionsTests
         Assert.True(options.RewriteHttpHost);
         Assert.Equal((byte)5, options.FakeTtl);
         Assert.Null(options.FakeSequenceOffset);
+        Assert.False(options.FakeWrongChecksum);
         Assert.Equal(1, options.FakeRepeats);
         Assert.Equal(1200, options.MaxPayload);
         Assert.Equal(IPAddress.Parse("77.88.8.8"), options.DnsAddress);
@@ -36,8 +49,32 @@ public sealed class EngineOptionsTests
 
         Assert.Null(options.FakeTtl);
         Assert.Equal(-10000, options.FakeSequenceOffset);
+        Assert.False(options.FakeWrongChecksum);
         Assert.Equal(2, options.FakeRepeats);
         Assert.Equal(900, options.MaxPayload);
+    }
+
+    [Fact]
+    public void Parse_WrongChecksumCanBeScopedToTargetHosts()
+    {
+        var options = EngineOptions.Parse([
+            "--no-fake",
+            "--fake-wrong-checksum",
+            "--fake-host-suffix", ".ROBLOX.COM,rbxcdn.com"
+        ]);
+
+        Assert.Null(options.FakeTtl);
+        Assert.Null(options.FakeSequenceOffset);
+        Assert.True(options.FakeWrongChecksum);
+        Assert.Equal(["roblox.com", "rbxcdn.com"], options.FakeHostSuffixes);
+    }
+
+    [Fact]
+    public void Parse_RejectsFakeHostScopeWhenFakeIsDisabled()
+    {
+        Assert.Throws<ArgumentException>(() => EngineOptions.Parse([
+            "--no-fake", "--fake-host-suffix", "roblox.com"
+        ]));
     }
 
     [Fact]

@@ -11,10 +11,12 @@ public sealed record EngineOptions(
     bool RewriteHttpHost,
     byte? FakeTtl,
     int? FakeSequenceOffset,
+    bool FakeWrongChecksum,
     int FakeRepeats,
     int MaxPayload,
     bool BlockQuic,
     IReadOnlyList<string> HostSuffixes,
+    IReadOnlyList<string> FakeHostSuffixes,
     Uri? DnsOverHttpsEndpoint,
     IPAddress? DnsOverHttpsConnectAddress,
     IPAddress? DnsAddress,
@@ -28,12 +30,14 @@ public sealed record EngineOptions(
         var splitMarker = TlsSplitMarker.None;
         var reverseFragments = true;
         var rewriteHttpHost = true;
-        byte? fakeTtl = 5;
+        byte? fakeTtl = null;
         int? fakeSequenceOffset = null;
+        var fakeWrongChecksum = false;
         var fakeRepeats = 1;
         var maxPayload = 1200;
         var blockQuic = false;
         var hostSuffixes = new List<string>();
+        var fakeHostSuffixes = new List<string>();
         Uri? dnsOverHttpsEndpoint = null;
         IPAddress? dnsOverHttpsConnectAddress = null;
         IPAddress? dnsAddress = null;
@@ -62,23 +66,22 @@ public sealed record EngineOptions(
                     fakeSequenceOffset = ParseInt(ReadValue(arguments, ref index, argument), argument, -1_000_000, 1_000_000);
                     if (fakeSequenceOffset == 0) throw new ArgumentOutOfRangeException(argument, "Sıra numarası ofseti sıfır olamaz.");
                     break;
+                case "--fake-wrong-checksum": fakeWrongChecksum = true; break;
+                case "--fake-valid-checksum": fakeWrongChecksum = false; break;
                 case "--fake-repeats":
                     fakeRepeats = ParseInt(ReadValue(arguments, ref index, argument), argument, 1, 3);
                     break;
                 case "--max-payload":
                     maxPayload = ParseInt(ReadValue(arguments, ref index, argument), argument, 64, 4096);
                     break;
-                case "--no-fake": fakeTtl = null; fakeSequenceOffset = null; break;
+                case "--no-fake": fakeTtl = null; fakeSequenceOffset = null; fakeWrongChecksum = false; break;
                 case "--block-quic": blockQuic = true; break;
                 case "--allow-quic": blockQuic = false; break;
                 case "--host-suffix":
-                    foreach (var suffix in ReadValue(arguments, ref index, argument).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                    {
-                        var normalized = suffix.TrimStart('.').ToLowerInvariant();
-                        if (normalized.Length == 0 || normalized.Any(character => !(char.IsAsciiLetterOrDigit(character) || character is '.' or '-')))
-                            throw new ArgumentException($"Geçersiz alan adı son eki: {suffix}");
-                        hostSuffixes.Add(normalized);
-                    }
+                    AddHostSuffixes(hostSuffixes, ReadValue(arguments, ref index, argument));
+                    break;
+                case "--fake-host-suffix":
+                    AddHostSuffixes(fakeHostSuffixes, ReadValue(arguments, ref index, argument));
                     break;
                 case "--dns-address":
                     var value = ReadValue(arguments, ref index, argument);
@@ -117,13 +120,16 @@ public sealed record EngineOptions(
             throw new ArgumentException("--dns-doh ve --dns-doh-address birlikte kullanılmalı.");
         if (dnsAddress is not null && dnsOverHttpsEndpoint is not null)
             throw new ArgumentException("Klasik DNS yönlendirmesi ve DoH aynı profilde kullanılamaz.");
+        if (fakeHostSuffixes.Count > 0 && fakeTtl is null && fakeSequenceOffset is null && !fakeWrongChecksum)
+            throw new ArgumentException("--fake-host-suffix için bir fake yöntemi etkin olmalı.");
 
         var normalizedPositions = splitPositions.Distinct().Order().ToArray();
         if (normalizedPositions.Length == 0) throw new ArgumentException("En az bir TLS bölme konumu gerekli.");
 
         return new EngineOptions(normalizedPositions, splitMarker, reverseFragments, rewriteHttpHost, fakeTtl,
-            fakeSequenceOffset, fakeRepeats, maxPayload, blockQuic,
+            fakeSequenceOffset, fakeWrongChecksum, fakeRepeats, maxPayload, blockQuic,
             hostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            fakeHostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             dnsOverHttpsEndpoint, dnsOverHttpsConnectAddress, dnsAddress, dnsPort);
     }
 
@@ -136,9 +142,11 @@ public sealed record EngineOptions(
           --rewrite-http-host | --no-http-rewrite
           --fake-ttl <1-255> | --no-fake
           --fake-seq-offset <-1000000..1000000> (yanlış TCP sıra numaralı sahte paket)
+          --fake-wrong-checksum | --fake-valid-checksum
           --fake-repeats <1-3> --max-payload <64-4096>
           --block-quic | --allow-quic
           --host-suffix <alan[,alan...]> (yalnız eşleşen HTTP/TLS akışları)
+          --fake-host-suffix <alan[,alan...]> (yalnız eşleşen alanlarda fake)
           --dns-doh <https-url> --dns-doh-address <bootstrap IPv4>
           --dns-address <IPv4> [--dns-port <1-65535>]
         """;
@@ -154,6 +162,21 @@ public sealed record EngineOptions(
         if (!int.TryParse(value, out var result) || result < minimum || result > maximum)
             throw new ArgumentOutOfRangeException(option, $"Değer {minimum}-{maximum} aralığında olmalı: {value}");
         return result;
+    }
+
+    private static void AddHostSuffixes(List<string> destination, string value)
+    {
+        foreach (var suffix in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var normalized = suffix.TrimStart('.').ToLowerInvariant();
+            if (normalized.Length == 0 || normalized.Any(character =>
+                    !(char.IsAsciiLetterOrDigit(character) || character is '.' or '-')))
+            {
+                throw new ArgumentException($"Geçersiz alan adı son eki: {suffix}");
+            }
+
+            destination.Add(normalized);
+        }
     }
 
     private static TlsSplitMarker ParseSplitMarker(string value) => value.ToLowerInvariant() switch

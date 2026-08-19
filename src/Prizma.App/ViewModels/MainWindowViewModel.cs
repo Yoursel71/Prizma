@@ -37,7 +37,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     private bool _isBenchmarkRunning;
     private double _benchmarkProgress;
     private string _benchmarkProgressText = "Henüz ölçüm yapılmadı";
-    private string _recommendationHint = "128 yerel stratejiyi erişim, gecikme ve hızla karşılaştırır.";
+    private string _recommendationHint = "160 yerel stratejiyi erişim, gecikme ve hızla karşılaştırır.";
 
     public MainWindowViewModel()
     {
@@ -245,7 +245,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         if (showConfirmation)
         {
             var confirmation = MessageBox.Show(
-                "Prizma bu ağda 128 güvenli stratejiyi Roblox web, istemci, CDN, API ve gerçek zamanlı bağlantı hedeflerinde sırayla dener. Ölçüm 5–15 dakika sürebilir ve en fazla 40 MB veri kullanır. Bu sırada bağlantı kısa aralıklarla yeniden kurulabilir.\n\nDevam edilsin mi?",
+                "Prizma bu ağda 160 güvenli stratejiyi Roblox web, istemci, CDN, API ve gerçek zamanlı bağlantı hedeflerinde sırayla dener. Ölçüm 6–18 dakika sürebilir ve en fazla 48 MB veri kullanır. Bu sırada bağlantı kısa aralıklarla yeniden kurulabilir.\n\nDevam edilsin mi?",
                 "Prizma Adaptive", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (confirmation != MessageBoxResult.Yes) return;
         }
@@ -282,7 +282,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
                 StateDescription = BenchmarkProgressText;
             });
 
-            AddLog($"Adaptive turnuva başladı: {candidates.Count} aday, üst sınır 40 MB.");
+            AddLog($"Adaptive turnuva başladı: {candidates.Count} aday, üst sınır 48 MB.");
             var run = await runner.RunAsync(candidates, options, progress);
             foreach (var ranked in run.TopProfiles)
             {
@@ -465,7 +465,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
     {
         Id = "local-adaptive-recommended",
         Name = "Bu ağ için önerilen",
-        Description = $"128 aday arasından seçildi: {winner.Profile.Description}",
+        Description = $"160 aday arasından seçildi: {winner.Profile.Description}",
         Badge = "ADAPTIVE · #1",
         Risk = winner.Profile.Risk,
         Recommended = true,

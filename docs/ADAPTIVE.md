@@ -4,19 +4,19 @@ Prizma evrensel bir “en hızlı profil” varsaymaz. DPI davranışı; ISS, ro
 
 ## Arama uzayı
 
-Laboratuvar 128 deterministik kombinasyonu sınar:
+Laboratuvar 160 deterministik kombinasyonu sınar:
 
 - TLS bölme: `1`, `2`, `midsld`, `1+2+midsld`
 - Gönderim: sıralı veya ters
-- Sahte politika: kapalı, yalnız geçmiş TCP sıra numarası, TTL 4 + geçmiş sıra, TTL 5 + geçmiş sıra
+- Sahte politika: kapalı, geçmiş TCP sıra numarası, hatalı TCP checksum, hedefli TTL 5, hedefli TTL 5 + geçmiş sıra
 - QUIC: açık veya TCP/TLS'e geri düşürme
 - DNS: sistem DNS'i veya `cloudflare-dns.com` adına normal TLS doğrulaması yapan wire-format DoH; bootstrap bağlantısı zehirli sistem DNS'inden bağımsız olarak `1.1.1.1` adresine kurulur
 
-TTL adaylarında TCP sıra numarası da kasıtlı olarak geçmişe çekilir. Böylece paket TTL tahmininden daha uzağa gitse bile sunucu tarafından geçerli ClientHello olarak kabul edilmez. Global QUIC engeli yalnız ölçüm gerçekten gerekli gösterirse seçilir.
+Fake adayları varsayılan olarak Roblox, Discord ve YouTube alan adlarıyla sınırlandırılır. TTL+SEQ adayında sıra numarası da geçmişe çekilir; wrong-checksum ayrı bir uyumluluk hattında ölçülür. Global QUIC engeli yalnız ölçüm gerçekten gerekli gösterirse seçilir.
 
 ## Ölçüm ve sıralama
 
-Her aday ayrı bir motor sürecinde çalışır; bağlantı havuzu ve HTTP önbelleği yeniden oluşturulur. Roblox ve tarafsız Cloudflare hedeflerinde normal TLS sertifika doğrulamasıyla erişim/gecikme, küçük sabit boyutlu yanıtta Mbps ölçülür. Toplam indirilen uygulama verisi 40 MB ile sınırlıdır.
+Her aday ayrı bir motor sürecinde çalışır; bağlantı havuzu ve HTTP önbelleği yeniden oluşturulur. Roblox ve tarafsız Cloudflare hedeflerinde normal TLS sertifika doğrulamasıyla erişim/gecikme, küçük sabit boyutlu yanıtta Mbps ölçülür. Toplam indirilen uygulama verisi 48 MB ile sınırlıdır.
 
 Her adaydan önce Windows DNS çözümleyici önbelleği temizlenir. Bu, bir önceki adayın temiz veya zehirli cevabının sonraki DNS hattını etkilemesini önler. DoH sorgusu başarısız olursa motor sessizce sistem DNS'ine düşmez; istemciye `SERVFAIL` döndürür. TLS sertifika adı daima `cloudflare-dns.com` kalır ve sertifika doğrulaması kapatılamaz.
 

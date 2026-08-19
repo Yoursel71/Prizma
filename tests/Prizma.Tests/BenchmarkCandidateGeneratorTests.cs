@@ -6,18 +6,18 @@ namespace Prizma.Tests;
 public sealed class BenchmarkCandidateGeneratorTests
 {
     [Fact]
-    public void Generate_ReturnsDeterministicUnique128CandidateFactorial()
+    public void Generate_ReturnsDeterministicUnique160CandidateFactorial()
     {
         var generator = new BenchmarkCandidateGenerator();
 
         var first = generator.Generate();
         var second = generator.Generate();
 
-        Assert.Equal(128, first.Count);
+        Assert.Equal(160, first.Count);
         Assert.Equal(first.Select(profile => profile.Id), second.Select(profile => profile.Id));
-        Assert.Equal(128, first.Select(profile => profile.Id).Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(64, first.Count(profile => profile.Id.EndsWith("dns-on", StringComparison.Ordinal)));
-        Assert.Equal(64, first.Count(profile => profile.Id.EndsWith("dns-off", StringComparison.Ordinal)));
+        Assert.Equal(160, first.Select(profile => profile.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(80, first.Count(profile => profile.Id.EndsWith("dns-on", StringComparison.Ordinal)));
+        Assert.Equal(80, first.Count(profile => profile.Id.EndsWith("dns-off", StringComparison.Ordinal)));
         Assert.All(first.Where(profile => profile.Id.EndsWith("dns-on", StringComparison.Ordinal)), profile =>
         {
             Assert.Contains("--dns-doh", profile.Arguments);
@@ -25,6 +25,14 @@ public sealed class BenchmarkCandidateGeneratorTests
             Assert.Contains("--dns-doh-address", profile.Arguments);
             Assert.Contains("1.1.1.1", profile.Arguments);
         });
+        Assert.Contains(first, profile => profile.Id.Contains("-checksum-", StringComparison.Ordinal) &&
+            profile.Arguments.Contains("--fake-wrong-checksum"));
+        Assert.All(first, profile => Assert.Contains("--no-http-rewrite", profile.Arguments));
+        Assert.All(first.Where(profile =>
+                profile.Arguments.Contains("--fake-ttl") ||
+                profile.Arguments.Contains("--fake-seq-offset") ||
+                profile.Arguments.Contains("--fake-wrong-checksum")), profile =>
+            Assert.Contains("--fake-host-suffix", profile.Arguments));
         Assert.All(first, profile => EngineOptions.Parse(profile.Arguments));
     }
 
@@ -37,7 +45,7 @@ public sealed class BenchmarkCandidateGeneratorTests
             DnsDohBootstrapAddress = null
         });
 
-        Assert.Equal(64, profiles.Count);
+        Assert.Equal(80, profiles.Count);
         Assert.All(profiles, profile => Assert.DoesNotContain("--dns-doh", profile.Arguments));
     }
 }

@@ -16,6 +16,12 @@ public static class PacketTransformer
         packet[layout.PayloadOffset + 1] == 0x03 &&
         packet[layout.PayloadOffset + 2] is 0x01 or 0x02 or 0x03 or 0x04;
 
+    public static bool IsHttpRequest(ReadOnlySpan<byte> packet, PacketLayout layout) =>
+        layout.Protocol == PacketLayout.TcpProtocol &&
+        layout.DestinationPort == 80 &&
+        layout.PayloadLength >= HostHeader.Length &&
+        packet.Slice(layout.PayloadOffset, layout.PayloadLength).IndexOf(HostHeader) >= 0;
+
     public static bool RewriteHttpHost(Span<byte> packet, PacketLayout layout)
     {
         if (layout.Protocol != PacketLayout.TcpProtocol || layout.DestinationPort != 80 || layout.PayloadLength < HostHeader.Length)
@@ -162,6 +168,18 @@ public static class PacketTransformer
 
     public static void SetPort(Span<byte> packet, PacketLayout layout, bool source, ushort port) =>
         BinaryPrimitives.WriteUInt16BigEndian(packet.Slice(layout.TransportHeaderOffset + (source ? 0 : 2), 2), port);
+
+    public static void CorruptTcpChecksum(Span<byte> packet, PacketLayout layout)
+    {
+        if (layout.Protocol != PacketLayout.TcpProtocol || layout.TransportHeaderOffset + 18 > packet.Length)
+        {
+            throw new ArgumentException("TCP checksum alanı bulunamadı.", nameof(packet));
+        }
+
+        var checksum = packet.Slice(layout.TransportHeaderOffset + 16, 2);
+        var current = BinaryPrimitives.ReadUInt16BigEndian(checksum);
+        BinaryPrimitives.WriteUInt16BigEndian(checksum, (ushort)(current ^ 0x0001));
+    }
 
     private static void SetIpv4Length(Span<byte> packet, int length) =>
         BinaryPrimitives.WriteUInt16BigEndian(packet.Slice(2, 2), checked((ushort)length));

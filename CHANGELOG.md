@@ -1,5 +1,16 @@
 # Değişiklik günlüğü
 
+## 1.3.0 — HEDEFLİ KLASİK ÇEKİRDEK
+
+- GoodbyeDPI modern reçetesindeki `split=2 + native reverse + TTL=5 + resend=1 + max-payload` yaklaşımı Türkiye • Ana profilinin temeli yapıldı.
+- Sabit TTL fake bütün internete uygulanmak yerine Roblox, Discord ve YouTube alan adlarıyla sınırlandırıldı.
+- HTTP parçalama `hoSt` başlık dönüşümünden ayrıldı; Host başlığı değiştirilmeden ilk ve persistent HTTP istekleri bölünebiliyor.
+- Motor seviyesinde hatalı TCP checksum fake desteği ve `--fake-host-suffix` güvenlik kapsamı eklendi.
+- Adaptive laboratuvarı 160 adaya çıkarıldı: fake kapalı, wrong-sequence, wrong-checksum, TTL5 ve TTL5+SEQ politikaları ayrı ayrı ölçülüyor.
+- Ölçüm bütçesi 48 MB'a çıkarıldı; QUIC açık ve kapalı yollar ile sistem DNS/DoH yolları karşılaştırılmaya devam ediyor.
+- Motorun argümansız varsayılanı global TTL fake yerine güvenli yalnız-split davranışına geçirildi.
+- Motor günlükleri etkin fake türünü ve hedefli olup olmadığını gösteriyor.
+
 ## 1.2.0 — PRİZMA
 
 - Ürün, kaynak ağacı, motor, Windows hizmeti ve paketler PRİZMA adı altında yeniden markalandı.
