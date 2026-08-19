@@ -11,6 +11,9 @@
 - Motor; geçmiş TCP sıra numaralı fake, tekrar/payload sınırı, farklı IPv4 ID ve ClientHello retransmit kesimiyle güçlendirildi.
 - Dengeli, Uyumluluk, Güçlü ve hedefli Roblox profilleri güvenli yeni seçeneklere taşındı.
 - Türkiye ağındaki DNS zehirlenmesine karşı sabit bootstrap IP'li, sertifika doğrulamalı wire-format DoH ve adaylar arası DNS cache temizliği eklendi.
+- Adaptive doğrulaması Roblox ana sayfasının yanında istemci CDN, API, hesap ve gerçek zamanlı bağlantı uçlarını kapsayacak biçimde genişletildi.
+- Normal koruma ve Windows hizmeti başlatılırken eski/zehirli DNS önbelleğinin otomatik temizlenmesi eklendi.
+- GitHub proje vitrini için yeni Prizma kapağı, ürün odaklı README ve hızlı başlangıç akışı hazırlandı.
 
 ## 0.3.0 - Geliştirme
 

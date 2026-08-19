@@ -1,0 +1,55 @@
+<svg width="1400" height="420" viewBox="0 0 1400 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="background" x1="70" y1="15" x2="1320" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1020"/>
+      <stop offset="0.48" stop-color="#11182C"/>
+      <stop offset="1" stop-color="#0B1222"/>
+    </linearGradient>
+    <linearGradient id="prism" x1="375" y1="50" x2="980" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#62E6FF"/>
+      <stop offset="0.34" stop-color="#6E7CFF"/>
+      <stop offset="0.68" stop-color="#A463FF"/>
+      <stop offset="1" stop-color="#FF68AE"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(700 220) rotate(90) scale(255 620)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D7CFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#6D7CFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-100" y="-100" width="1600" height="620" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+
+  <rect width="1400" height="420" rx="32" fill="url(#background)"/>
+  <ellipse cx="700" cy="220" rx="620" ry="255" fill="url(#glow)" filter="url(#blur)"/>
+
+  <g opacity="0.42">
+    <path d="M0 84H1400M0 168H1400M0 252H1400M0 336H1400" stroke="#7C8AFF" stroke-opacity="0.12"/>
+    <path d="M140 0V420M280 0V420M420 0V420M560 0V420M700 0V420M840 0V420M980 0V420M1120 0V420M1260 0V420" stroke="#7C8AFF" stroke-opacity="0.09"/>
+  </g>
+
+  <path d="M188 99L288 210L188 321L88 210L188 99Z" fill="url(#prism)" fill-opacity="0.14" stroke="url(#prism)" stroke-width="3"/>
+  <path d="M188 135L256 210L188 285L120 210L188 135Z" fill="url(#prism)"/>
+  <path d="M188 135V285M120 210H256" stroke="white" stroke-opacity="0.48" stroke-width="2"/>
+
+  <text x="342" y="178" fill="white" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="92" font-weight="750" letter-spacing="8">PRİZMA</text>
+  <text x="348" y="226" fill="#AAB5D6" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="25" font-weight="500" letter-spacing="1.6">İNTERNET, KENDİ YÖNÜNDE.</text>
+  <text x="348" y="273" fill="#D8DDF0" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="20">Türkiye için yerel, ölçülebilir ve açık kaynak bağlantı dayanıklılığı.</text>
+
+  <g font-family="Segoe UI, Inter, Arial, sans-serif" font-size="15" font-weight="600">
+    <rect x="348" y="311" width="200" height="42" rx="21" fill="#6D7CFF" fill-opacity="0.16" stroke="#7886FF" stroke-opacity="0.45"/>
+    <circle cx="372" cy="332" r="5" fill="#67EDC5"/>
+    <text x="387" y="338" fill="#DDE2FF">128 ADAPTIVE PROFİL</text>
+
+    <rect x="564" y="311" width="170" height="42" rx="21" fill="#6D7CFF" fill-opacity="0.16" stroke="#7886FF" stroke-opacity="0.45"/>
+    <circle cx="588" cy="332" r="5" fill="#67EDC5"/>
+    <text x="603" y="338" fill="#DDE2FF">DOĞRULANMIŞ DoH</text>
+
+    <rect x="750" y="311" width="170" height="42" rx="21" fill="#6D7CFF" fill-opacity="0.16" stroke="#7886FF" stroke-opacity="0.45"/>
+    <circle cx="774" cy="332" r="5" fill="#67EDC5"/>
+    <text x="789" y="338" fill="#DDE2FF">WINDOWS 10 / 11</text>
+  </g>
+
+  <path d="M1236 105L1320 210L1236 315L1152 210L1236 105Z" stroke="url(#prism)" stroke-opacity="0.46" stroke-width="2"/>
+  <path d="M1236 145L1288 210L1236 275L1184 210L1236 145Z" stroke="url(#prism)" stroke-opacity="0.25"/>
+</svg>
