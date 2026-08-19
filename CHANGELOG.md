@@ -5,6 +5,11 @@
 - Ürün, kaynak ağacı, motor, Windows hizmeti ve paketler PRİZMA adı altında yeniden markalandı.
 - Yeni `Prizma.exe`, `Prizma.Engine.exe`, `%ProgramFiles%\Prizma` ve `Prizma.Engine` hizmet sözleşmesi eklendi.
 - Repo, release bağlantıları ve CI paket adları yeni markaya taşındı.
+- Prizma Adaptive ile 128 deterministik yerel aday, 40 MB bütçeli gerçek erişim/gecikme/Mbps turnuvasında sıralanıyor.
+- İlk 5 sonucu, profil argümanlarını ve canlı günlükleri gösteren Geliştirici merkezi eklendi.
+- Ağ parmak izine bağlı kazanan profil saklama ve ağ değişince yeniden doğrulama eklendi.
+- Motor; geçmiş TCP sıra numaralı fake, tekrar/payload sınırı, farklı IPv4 ID ve ClientHello retransmit kesimiyle güçlendirildi.
+- Dengeli, Uyumluluk, Güçlü ve hedefli Roblox profilleri güvenli yeni seçeneklere taşındı.
 
 ## 0.3.0 - Geliştirme
 
