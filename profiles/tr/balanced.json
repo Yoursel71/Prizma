@@ -1,7 +1,7 @@
 {
   "id": "tr-balanced",
   "name": "Türkiye • Dengeli",
-  "description": "TLS'i ilk bayt ve alan adının ortasından bölüp parçaları ters yollar; sunucuya ulaşsa bile geçersiz kalan sıra numaralı tek sahte paket ve süreç içi DNS yönlendirmesi uygular.",
+  "description": "TLS'i ilk bayt ve alan adının ortasından bölüp parçaları ters yollar; geçmiş sıra numaralı tek sahte paket ve sertifika doğrulamalı Cloudflare DNS-over-HTTPS uygular.",
   "badge": "Önerilen • Türkiye",
   "risk": "Medium",
   "recommended": true,
@@ -16,7 +16,7 @@
     "--fake-repeats", "1",
     "--max-payload", "1500",
     "--allow-quic",
-    "--dns-address", "77.88.8.8",
-    "--dns-port", "1253"
+    "--dns-doh", "https://cloudflare-dns.com/dns-query",
+    "--dns-doh-address", "1.1.1.1"
   ]
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 using Prizma.Core.Models;
 
@@ -31,9 +30,9 @@ public sealed class BenchmarkCandidateGenerator
         options ??= new BenchmarkCandidateOptions();
         ValidateOptions(options);
 
-        var dnsLanes = options.CompareDnsOnAndOff && options.DnsAddress is not null
+        var dnsLanes = options.CompareDnsOnAndOff && options.DnsDohEndpoint is not null
             ? new[] { false, true }
-            : new[] { options.DnsAddress is not null };
+            : new[] { options.DnsDohEndpoint is not null };
         var profiles = new List<ConnectionProfile>(128);
         foreach (var split in SplitRecipes)
         foreach (var reverse in new[] { false, true })
@@ -53,10 +52,10 @@ public sealed class BenchmarkCandidateGenerator
 
             if (useDns)
             {
-                arguments.Add("--dns-address");
-                arguments.Add(options.DnsAddress!);
-                arguments.Add("--dns-port");
-                arguments.Add(options.DnsPort.ToString(CultureInfo.InvariantCulture));
+                arguments.Add("--dns-doh");
+                arguments.Add(options.DnsDohEndpoint!.AbsoluteUri);
+                arguments.Add("--dns-doh-address");
+                arguments.Add(options.DnsDohBootstrapAddress!);
             }
 
             if (options.HostSuffixes.Count > 0)
@@ -92,11 +91,22 @@ public sealed class BenchmarkCandidateGenerator
 
     private static void ValidateOptions(BenchmarkCandidateOptions options)
     {
-        if (options.DnsAddress is not null &&
-            (!IPAddress.TryParse(options.DnsAddress, out var address) ||
+        if (options.DnsDohEndpoint is not null &&
+            (!options.DnsDohEndpoint.IsAbsoluteUri || options.DnsDohEndpoint.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("DoH uç noktası mutlak bir HTTPS adresi olmalı.", nameof(options));
+        }
+
+        if ((options.DnsDohEndpoint is null) != (options.DnsDohBootstrapAddress is null))
+        {
+            throw new ArgumentException("DoH uç noktası ve bootstrap adresi birlikte belirtilmeli.", nameof(options));
+        }
+
+        if (options.DnsDohBootstrapAddress is not null &&
+            (!IPAddress.TryParse(options.DnsDohBootstrapAddress, out var address) ||
              address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork))
         {
-            throw new ArgumentException("DNS adresi geçerli bir IPv4 adresi olmalı.", nameof(options));
+            throw new ArgumentException("DoH bootstrap adresi geçerli bir IPv4 adresi olmalı.", nameof(options));
         }
 
         if (options.HostSuffixes.Any(string.IsNullOrWhiteSpace))
@@ -111,8 +121,8 @@ public sealed class BenchmarkCandidateGenerator
 
 public sealed class BenchmarkCandidateOptions
 {
-    public string? DnsAddress { get; init; } = "77.88.8.8";
-    public ushort DnsPort { get; init; } = 1253;
+    public Uri? DnsDohEndpoint { get; init; } = new("https://cloudflare-dns.com/dns-query");
+    public string? DnsDohBootstrapAddress { get; init; } = "1.1.1.1";
     public bool CompareDnsOnAndOff { get; init; } = true;
     public IReadOnlyList<string> HostSuffixes { get; init; } = [];
 }

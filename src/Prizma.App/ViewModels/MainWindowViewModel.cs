@@ -281,6 +281,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
             var winner = run.TopProfiles.FirstOrDefault();
             if (winner is null || winner.Result.AccessibilityRate < 1)
             {
+                SaveRecommendationCache(null);
                 throw new InvalidOperationException("Bütün doğrulama hedeflerine ulaşan kararlı bir profil bulunamadı.");
             }
 
@@ -474,9 +475,11 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
                 return;
             }
 
-            Profiles.Insert(0, cache.RecommendedProfile);
+            if (cache.RecommendedProfile is not null) Profiles.Insert(0, cache.RecommendedProfile);
             foreach (var result in cache.TopResults) BenchmarkTopResults.Add(result);
-            RecommendationHint = $"Bu ağ için son ölçüm: {cache.MeasuredAt.LocalDateTime:g}";
+            RecommendationHint = cache.RecommendedProfile is null
+                ? $"Son ölçüm tanı üretti; Geliştirici ekranına bakın · {cache.MeasuredAt.LocalDateTime:g}"
+                : $"Bu ağ için son ölçüm: {cache.MeasuredAt.LocalDateTime:g}";
         }
         catch (Exception exception)
         {
@@ -484,7 +487,7 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    private void SaveRecommendationCache(ConnectionProfile recommended)
+    private void SaveRecommendationCache(ConnectionProfile? recommended)
     {
         var path = RecommendationCachePath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -547,20 +550,27 @@ public sealed class MainWindowViewModel : ObservableObject, IAsyncDisposable
 
 public sealed record BenchmarkResultViewModel(
     int Rank, string ProfileName, double Score, double LatencyMs,
-    double ThroughputMbps, double SuccessRate, string Grade)
+    double ThroughputMbps, double SuccessRate, string Grade, string? FailureSummary)
 {
     public static BenchmarkResultViewModel From(RankedProfileResult ranked, ProfileBenchmarkScorer scorer)
     {
         var score = scorer.CalculateScore(ranked.Result);
         var grade = score switch { >= 90 => "A", >= 80 => "B", >= 70 => "C", >= 55 => "D", _ => "E" };
+        var failures = ranked.Result.AccessibilityResults
+            .Where(result => !result.Reachable)
+            .Select(result => $"{result.Target.Host}: {result.Error ?? "erişilemedi"}")
+            .ToList();
+        if (ranked.Result.ThroughputResult is { Reachable: false } throughput)
+            failures.Add($"Hız: {throughput.Error ?? "ölçülemedi"}");
         return new BenchmarkResultViewModel(ranked.Rank, ranked.Result.Profile.Name, score,
             ranked.Result.MedianLatency == TimeSpan.MaxValue ? 0 : ranked.Result.MedianLatency.TotalMilliseconds,
-            ranked.Result.ThroughputMbps, ranked.Result.AccessibilityRate * 100, grade);
+            ranked.Result.ThroughputMbps, ranked.Result.AccessibilityRate * 100, grade,
+            failures.Count == 0 ? null : string.Join(" · ", failures));
     }
 }
 
 public sealed record RecommendationCache(
     string NetworkSignature,
     DateTimeOffset MeasuredAt,
-    ConnectionProfile RecommendedProfile,
+    ConnectionProfile? RecommendedProfile,
     IReadOnlyList<BenchmarkResultViewModel> TopResults);

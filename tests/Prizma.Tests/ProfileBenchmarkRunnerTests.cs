@@ -12,16 +12,41 @@ public sealed class ProfileBenchmarkRunnerTests
     {
         var controller = new RecordingEngineController();
         var probe = new RecordingProbe();
+        var flusher = new RecordingDnsCacheFlusher();
         var candidates = new[] { Profile("one"), Profile("two") };
-        var runner = new ProfileBenchmarkRunner(controller, probe, new ProfileBenchmarkScorer());
+        var runner = new ProfileBenchmarkRunner(controller, probe, new ProfileBenchmarkScorer(), flusher);
 
         var result = await runner.RunAsync(candidates, Options(maximumProfiles: 2));
 
         Assert.Equal(["one", "two"], controller.StartedIds);
+        Assert.Equal(2, flusher.FlushCount);
         Assert.Equal(3, controller.StopCount); // initial cleanup + one per candidate
         Assert.Equal(["one", "two"], probe.ProbedIds);
         Assert.Equal(2, result.Results.Count);
         Assert.Equal(2, result.TopProfiles.Count);
+    }
+
+    [Fact]
+    public async Task RunAsync_AllCandidatesFail_PreservesRankingAndEndpointErrors()
+    {
+        var controller = new RecordingEngineController();
+        var runner = new ProfileBenchmarkRunner(
+            controller,
+            new ThrowingProbe("uzak sertifika geçersiz"),
+            new ProfileBenchmarkScorer(),
+            NoOpDnsCacheFlusher.Instance);
+
+        var result = await runner.RunAsync(
+            [Profile("failed-one"), Profile("failed-two")],
+            Options(maximumProfiles: 2));
+
+        Assert.Equal(2, result.TopProfiles.Count);
+        Assert.All(result.Results, profileResult =>
+        {
+            var endpoint = Assert.Single(profileResult.AccessibilityResults);
+            Assert.False(endpoint.Reachable);
+            Assert.Contains("sertifika", endpoint.Error, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]
@@ -110,6 +135,28 @@ public sealed class ProfileBenchmarkRunnerTests
                 TimeSpan.FromMilliseconds(ProbedIds.Count), 0, 0);
             return Task.FromResult(new ProfileBenchmarkResult(
                 profile, [endpoint], null, DateTimeOffset.UtcNow));
+        }
+    }
+
+    private sealed class ThrowingProbe(string message) : IConnectionProbe
+    {
+        public Task<ProfileBenchmarkResult> ProbeAsync(
+            ConnectionProfile profile,
+            BenchmarkRunOptions options,
+            ProbeDataBudget dataBudget,
+            CancellationToken cancellationToken = default) =>
+            throw new HttpRequestException(message);
+    }
+
+    private sealed class RecordingDnsCacheFlusher : IDnsCacheFlusher
+    {
+        public int FlushCount { get; private set; }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            FlushCount++;
+            return Task.CompletedTask;
         }
     }
 

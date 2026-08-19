@@ -1,6 +1,6 @@
 # Değişiklik günlüğü
 
-## 1.0.0 — PRİZMA
+## 1.0.1 — PRİZMA
 
 - Ürün, kaynak ağacı, motor, Windows hizmeti ve paketler PRİZMA adı altında yeniden markalandı.
 - Yeni `Prizma.exe`, `Prizma.Engine.exe`, `%ProgramFiles%\Prizma` ve `Prizma.Engine` hizmet sözleşmesi eklendi.
@@ -10,6 +10,7 @@
 - Ağ parmak izine bağlı kazanan profil saklama ve ağ değişince yeniden doğrulama eklendi.
 - Motor; geçmiş TCP sıra numaralı fake, tekrar/payload sınırı, farklı IPv4 ID ve ClientHello retransmit kesimiyle güçlendirildi.
 - Dengeli, Uyumluluk, Güçlü ve hedefli Roblox profilleri güvenli yeni seçeneklere taşındı.
+- Türkiye ağındaki DNS zehirlenmesine karşı sabit bootstrap IP'li, sertifika doğrulamalı wire-format DoH ve adaylar arası DNS cache temizliği eklendi.
 
 ## 0.3.0 - Geliştirme
 

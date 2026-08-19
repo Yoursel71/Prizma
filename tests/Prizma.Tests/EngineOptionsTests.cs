@@ -60,4 +60,20 @@ public sealed class EngineOptionsTests
 
         Assert.Contains("Bilinmeyen", exception.Message);
     }
+
+    [Fact]
+    public void Parse_DohRequiresHttpsEndpointAndBootstrapAddress()
+    {
+        var options = EngineOptions.Parse([
+            "--dns-doh", "https://cloudflare-dns.com/dns-query",
+            "--dns-doh-address", "1.1.1.1"
+        ]);
+
+        Assert.Equal(new Uri("https://cloudflare-dns.com/dns-query"), options.DnsOverHttpsEndpoint);
+        Assert.Equal(IPAddress.Parse("1.1.1.1"), options.DnsOverHttpsConnectAddress);
+        Assert.Null(options.DnsAddress);
+        Assert.Throws<ArgumentException>(() => EngineOptions.Parse([
+            "--dns-doh", "https://cloudflare-dns.com/dns-query"
+        ]));
+    }
 }

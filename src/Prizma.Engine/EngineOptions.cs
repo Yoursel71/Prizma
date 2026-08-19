@@ -15,6 +15,8 @@ public sealed record EngineOptions(
     int MaxPayload,
     bool BlockQuic,
     IReadOnlyList<string> HostSuffixes,
+    Uri? DnsOverHttpsEndpoint,
+    IPAddress? DnsOverHttpsConnectAddress,
     IPAddress? DnsAddress,
     ushort DnsPort)
 {
@@ -32,6 +34,8 @@ public sealed record EngineOptions(
         var maxPayload = 1200;
         var blockQuic = false;
         var hostSuffixes = new List<string>();
+        Uri? dnsOverHttpsEndpoint = null;
+        IPAddress? dnsOverHttpsConnectAddress = null;
         IPAddress? dnsAddress = null;
         ushort dnsPort = 53;
 
@@ -81,6 +85,19 @@ public sealed record EngineOptions(
                     if (!IPAddress.TryParse(value, out dnsAddress) || dnsAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
                         throw new ArgumentException($"Geçersiz IPv4 DNS adresi: {value}");
                     break;
+                case "--dns-doh":
+                    var endpointValue = ReadValue(arguments, ref index, argument);
+                    if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out dnsOverHttpsEndpoint) ||
+                        dnsOverHttpsEndpoint.Scheme != Uri.UriSchemeHttps ||
+                        !string.IsNullOrEmpty(dnsOverHttpsEndpoint.UserInfo))
+                        throw new ArgumentException($"Geçersiz HTTPS DNS uç noktası: {endpointValue}");
+                    break;
+                case "--dns-doh-address":
+                    var connectValue = ReadValue(arguments, ref index, argument);
+                    if (!IPAddress.TryParse(connectValue, out dnsOverHttpsConnectAddress) ||
+                        dnsOverHttpsConnectAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+                        throw new ArgumentException($"Geçersiz DoH IPv4 bağlantı adresi: {connectValue}");
+                    break;
                 case "--dns-port":
                     dnsPort = checked((ushort)ParseInt(ReadValue(arguments, ref index, argument), argument, 1, 65535));
                     break;
@@ -96,13 +113,18 @@ public sealed record EngineOptions(
 
         if (dnsAddress is null && dnsPort != 53)
             throw new ArgumentException("--dns-port yalnızca --dns-address ile kullanılabilir.");
+        if ((dnsOverHttpsEndpoint is null) != (dnsOverHttpsConnectAddress is null))
+            throw new ArgumentException("--dns-doh ve --dns-doh-address birlikte kullanılmalı.");
+        if (dnsAddress is not null && dnsOverHttpsEndpoint is not null)
+            throw new ArgumentException("Klasik DNS yönlendirmesi ve DoH aynı profilde kullanılamaz.");
 
         var normalizedPositions = splitPositions.Distinct().Order().ToArray();
         if (normalizedPositions.Length == 0) throw new ArgumentException("En az bir TLS bölme konumu gerekli.");
 
         return new EngineOptions(normalizedPositions, splitMarker, reverseFragments, rewriteHttpHost, fakeTtl,
             fakeSequenceOffset, fakeRepeats, maxPayload, blockQuic,
-            hostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(), dnsAddress, dnsPort);
+            hostSuffixes.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            dnsOverHttpsEndpoint, dnsOverHttpsConnectAddress, dnsAddress, dnsPort);
     }
 
     public static string HelpText => """
@@ -117,6 +139,7 @@ public sealed record EngineOptions(
           --fake-repeats <1-3> --max-payload <64-4096>
           --block-quic | --allow-quic
           --host-suffix <alan[,alan...]> (yalnız eşleşen HTTP/TLS akışları)
+          --dns-doh <https-url> --dns-doh-address <bootstrap IPv4>
           --dns-address <IPv4> [--dns-port <1-65535>]
         """;
 

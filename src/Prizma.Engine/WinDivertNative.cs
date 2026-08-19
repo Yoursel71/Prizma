@@ -19,6 +19,12 @@ internal static unsafe partial class WinDivertNative
         [FieldOffset(20)] public uint SubInterfaceIndex;
 
         public readonly bool Outbound => (Flags & (1u << 17)) != 0;
+
+        public void SetOutbound(bool outbound)
+        {
+            if (outbound) Flags |= 1u << 17;
+            else Flags &= ~(1u << 17);
+        }
     }
 
     [LibraryImport("WinDivert.dll", EntryPoint = "WinDivertOpen", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]

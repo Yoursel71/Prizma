@@ -18,6 +18,13 @@ public sealed class BenchmarkCandidateGeneratorTests
         Assert.Equal(128, first.Select(profile => profile.Id).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(64, first.Count(profile => profile.Id.EndsWith("dns-on", StringComparison.Ordinal)));
         Assert.Equal(64, first.Count(profile => profile.Id.EndsWith("dns-off", StringComparison.Ordinal)));
+        Assert.All(first.Where(profile => profile.Id.EndsWith("dns-on", StringComparison.Ordinal)), profile =>
+        {
+            Assert.Contains("--dns-doh", profile.Arguments);
+            Assert.Contains("https://cloudflare-dns.com/dns-query", profile.Arguments);
+            Assert.Contains("--dns-doh-address", profile.Arguments);
+            Assert.Contains("1.1.1.1", profile.Arguments);
+        });
         Assert.All(first, profile => EngineOptions.Parse(profile.Arguments));
     }
 
@@ -26,10 +33,11 @@ public sealed class BenchmarkCandidateGeneratorTests
     {
         var profiles = new BenchmarkCandidateGenerator().Generate(new BenchmarkCandidateOptions
         {
-            DnsAddress = null
+            DnsDohEndpoint = null,
+            DnsDohBootstrapAddress = null
         });
 
         Assert.Equal(64, profiles.Count);
-        Assert.All(profiles, profile => Assert.DoesNotContain("--dns-address", profile.Arguments));
+        Assert.All(profiles, profile => Assert.DoesNotContain("--dns-doh", profile.Arguments));
     }
 }

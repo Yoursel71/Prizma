@@ -3,11 +3,37 @@ using Prizma.Core.Models;
 
 namespace Prizma.Core.Benchmarking;
 
-public sealed class ProfileBenchmarkRunner(
-    IEngineController engineController,
-    IConnectionProbe connectionProbe,
-    ProfileBenchmarkScorer scorer)
+public sealed class ProfileBenchmarkRunner
 {
+    private readonly IEngineController _engineController;
+    private readonly IConnectionProbe _connectionProbe;
+    private readonly ProfileBenchmarkScorer _scorer;
+    private readonly IDnsCacheFlusher _dnsCacheFlusher;
+
+    public ProfileBenchmarkRunner(
+        IEngineController engineController,
+        IConnectionProbe connectionProbe,
+        ProfileBenchmarkScorer scorer)
+        : this(engineController, connectionProbe, scorer, new WindowsDnsCacheFlusher())
+    {
+    }
+
+    public ProfileBenchmarkRunner(
+        IEngineController engineController,
+        IConnectionProbe connectionProbe,
+        ProfileBenchmarkScorer scorer,
+        IDnsCacheFlusher dnsCacheFlusher)
+    {
+        ArgumentNullException.ThrowIfNull(engineController);
+        ArgumentNullException.ThrowIfNull(connectionProbe);
+        ArgumentNullException.ThrowIfNull(scorer);
+        ArgumentNullException.ThrowIfNull(dnsCacheFlusher);
+        _engineController = engineController;
+        _connectionProbe = connectionProbe;
+        _scorer = scorer;
+        _dnsCacheFlusher = dnsCacheFlusher;
+    }
+
     public async Task<BenchmarkRunResult> RunAsync(
         IReadOnlyList<ConnectionProfile> candidates,
         BenchmarkRunOptions options,
@@ -24,7 +50,7 @@ public sealed class ProfileBenchmarkRunner(
 
         // A caller may have left a manually selected profile running. Every
         // candidate must begin from a clean process so its arguments take effect.
-        await engineController.StopAsync(cancellationToken).ConfigureAwait(false);
+        await _engineController.StopAsync(cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < selectedCandidates.Length; index++)
         {
@@ -35,13 +61,14 @@ public sealed class ProfileBenchmarkRunner(
 
             try
             {
-                await engineController.StartAsync(candidate, cancellationToken).ConfigureAwait(false);
+                await _dnsCacheFlusher.FlushAsync(cancellationToken).ConfigureAwait(false);
+                await _engineController.StartAsync(candidate, cancellationToken).ConfigureAwait(false);
                 if (options.EngineSettleDelay > TimeSpan.Zero)
                 {
                     await Task.Delay(options.EngineSettleDelay, cancellationToken).ConfigureAwait(false);
                 }
 
-                result = await connectionProbe.ProbeAsync(
+                result = await _connectionProbe.ProbeAsync(
                     candidate,
                     options,
                     budget,
@@ -59,7 +86,7 @@ public sealed class ProfileBenchmarkRunner(
             {
                 // Stop is part of profile isolation and must complete even when a
                 // probe is cancelled or fails midway through a response.
-                await engineController.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                await _engineController.StopAsync(CancellationToken.None).ConfigureAwait(false);
             }
 
             results.Add(result);
@@ -68,7 +95,7 @@ public sealed class ProfileBenchmarkRunner(
 
         return new BenchmarkRunResult(
             results,
-            scorer.RankTopFive(results),
+            _scorer.RankTopFive(results),
             budget.BytesConsumed,
             budget.IsExhausted);
     }

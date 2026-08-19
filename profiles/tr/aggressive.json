@@ -1,7 +1,7 @@
 {
   "id": "tr-aggressive",
   "name": "Türkiye • Güçlü",
-  "description": "1+2+midsld ters bölme, TTL=5 ve geçmiş sıra numarasını birlikte kullanan sahte paket; son çare olarak QUIC/HTTP3 geri düşürmesi uygular.",
+  "description": "1+2+midsld ters bölme, TTL=5 ve geçmiş sıra numaralı sahte paket, Cloudflare DNS-over-HTTPS; son çare olarak QUIC/HTTP3 geri düşürmesi uygular.",
   "badge": "Güçlü",
   "risk": "High",
   "recommended": false,
@@ -16,7 +16,7 @@
     "--fake-repeats", "1",
     "--max-payload", "1500",
     "--block-quic",
-    "--dns-address", "77.88.8.8",
-    "--dns-port", "1253"
+    "--dns-doh", "https://cloudflare-dns.com/dns-query",
+    "--dns-doh-address", "1.1.1.1"
   ]
 }

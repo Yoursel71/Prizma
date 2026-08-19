@@ -37,9 +37,9 @@ jobs:
         run: dotnet test Prizma.sln --configuration Release --no-build --no-restore
       - name: Create self-contained package
         shell: pwsh
-        run: ./scripts/Build-Release.ps1 -Version "1.0.0-ci"
+        run: ./scripts/Build-Release.ps1 -Version "1.0.1-ci"
       - uses: actions/upload-artifact@v7
         with:
           name: Prizma-win-x64
-          path: artifacts/release/Prizma-v1.0.0-ci-win-x64.zip
+          path: artifacts/release/Prizma-v1.0.1-ci-win-x64.zip
           if-no-files-found: error

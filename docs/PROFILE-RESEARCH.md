@@ -18,7 +18,7 @@ Bu dosya Prizma 1.0 profillerinin neden bu şekilde kurulduğunu ve hangi davran
 | Güçlü | `1,midsld` | Ters | TTL 5 | UDP/443 düşürülür | HTTP/80 + TLS/443 |
 | Roblox | `1,midsld` | Ters | TTL 5 | Açık | Roblox alan adı son ekleri |
 
-DNS yönlendirmesi işletim sisteminin adaptör ayarını değiştirmez. Yalnız motorun yakaladığı IPv4 UDP/53 sorgularını `77.88.8.8:1253` hedefine çevirir ve cevapları özgün kaynak görünümüne geri eşler.
+DNS koruması işletim sisteminin adaptör ayarını değiştirmez. Motorun yakaladığı IPv4 UDP/53 sorgularını RFC 8484 wire-format DoH ile `cloudflare-dns.com` adresine taşır; TCP bağlantısını sistem DNS'ine başvurmadan `1.1.1.1` bootstrap IP'sine kurarken SNI ve normal sertifika ad/zincir doğrulamasını korur.
 
 ## Kaynaklar
 

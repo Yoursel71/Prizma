@@ -21,7 +21,7 @@ Prizma artık `goodbyedpi.exe` veya `winws2.exe` çalıştırmaz. Uygulamanın k
 - Zapret tarzı çoklu `multidisorder` benzeri ters parça sıralaması
 - TTL=5 sahte TLS paketi ve güvenli SNI maskeleme
 - HTTP `Host` başlığı dönüşümü
-- Süreç içi IPv4 UDP DNS yönlendirmesi ve cevap geri eşleme
+- Zehirli sistem DNS önbelleğini aşan, normal TLS ad/zincir doğrulamalı Cloudflare wire-format DNS-over-HTTPS
 - İsteğe bağlı QUIC/HTTP3 engeliyle tarayıcıyı işlenen TCP/TLS yoluna düşürme
 - Alan adı son eki allowlist'iyle yalnız hedeflenen HTTP/TLS akışlarını işleme
 - **Prizma Adaptive:** bu ağda 128 stratejiyi gerçek erişim, TLS gecikmesi ve küçük Mbps örneğiyle karşılaştırıp ilk 5'i sıralama
@@ -70,7 +70,7 @@ dotnet test Prizma.sln --configuration Release
 Self-contained paket:
 
 ```powershell
-./scripts/Build-Release.ps1 -Version 1.0.0
+./scripts/Build-Release.ps1 -Version 1.0.1
 ```
 
 Betik yalnız resmî WinDivert `v2.2.2` arşivini indirir ve `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. GUI ve motor doğrudan bu kaynak ağacından derlenir. Çıktı `artifacts/release/` altındadır.
@@ -83,7 +83,7 @@ Arayüzdeki **Hizmet olarak kur** düğmesi seçili profili `%ProgramData%\Prizm
 
 ## Profiller
 
-- **Türkiye • Dengeli:** `1+2+midsld` ters çoklu split, tek wrong-sequence fake ve DNS yönlendirmesi; QUIC'e dokunmaz
+- **Türkiye • Dengeli:** `1+2+midsld` ters çoklu split, tek wrong-sequence fake ve sertifika doğrulamalı DoH; QUIC'e dokunmaz
 - **Türkiye • Uyumluluk:** sıralı `midsld` split; fake, özel DNS ve QUIC engeli yok
 - **Türkiye • Güçlü:** TTL+wrong-sequence fake ve son çare QUIC engeli
 - **Türkiye • Roblox:** yalnız `roblox.com`, `rbx.com` ve `rbxcdn.com` HTTP/TLS trafiğine uygulanan hedefli profil
@@ -94,7 +94,7 @@ Profil seçenekleri tek bir shell komutuna çevrilmez. Her token `ProcessStartIn
 
 ## Mevcut sınırlar
 
-1.0.0 motorunun bilinçli sınırları:
+1.0.1 motorunun bilinçli sınırları:
 
 - IPv4 TCP 80/443 ve IPv4 UDP DNS işlenir.
 - IPv6 DNS ve birden fazla TCP paketine yayılan TLS ClientHello reassembly henüz yoktur.
