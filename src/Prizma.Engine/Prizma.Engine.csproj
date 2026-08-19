@@ -8,7 +8,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Prizma.Engine</AssemblyName>
     <RootNamespace>Prizma.Engine</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.2.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Description>Prizma yerel WinDivert paket işleme motoru</Description>
   </PropertyGroup>
 

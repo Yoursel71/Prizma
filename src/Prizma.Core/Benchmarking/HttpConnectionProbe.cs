@@ -90,7 +90,7 @@ public sealed class HttpConnectionProbe : IConnectionProbe
             using var request = new HttpRequestMessage(HttpMethod.Get, target);
             request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true, NoStore = true };
             request.Headers.ConnectionClose = true;
-            request.Headers.UserAgent.ParseAdd("Prizma-Benchmark/1.0");
+            request.Headers.UserAgent.ParseAdd("Prizma-Benchmark/1.2");
             if (measureThroughput && maximumBodyBytes > 0)
             {
                 request.Headers.Range = new RangeHeaderValue(0, maximumBodyBytes - 1L);

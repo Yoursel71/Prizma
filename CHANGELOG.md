@@ -1,6 +1,6 @@
 # Değişiklik günlüğü
 
-## 1.0.1 — PRİZMA
+## 1.2.0 — PRİZMA
 
 - Ürün, kaynak ağacı, motor, Windows hizmeti ve paketler PRİZMA adı altında yeniden markalandı.
 - Yeni `Prizma.exe`, `Prizma.Engine.exe`, `%ProgramFiles%\Prizma` ve `Prizma.Engine` hizmet sözleşmesi eklendi.

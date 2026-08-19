@@ -55,7 +55,7 @@
                         <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="PRİZMA" FontFamily="{StaticResource DisplayFont}"
                                        FontSize="14" FontWeight="SemiBold" />
-                            <TextBlock Text="YEREL MOTOR · 1.0" FontSize="8.5" FontWeight="SemiBold"
+                            <TextBlock Text="YEREL MOTOR · 1.2" FontSize="8.5" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextQuiet}" />
                         </StackPanel>
                     </StackPanel>

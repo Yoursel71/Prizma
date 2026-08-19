@@ -128,7 +128,7 @@ Gereksinimler: Windows 10/11 x64, .NET 8 SDK ve PowerShell 5.1 veya 7+.
 dotnet restore Prizma.sln
 dotnet build Prizma.sln --configuration Release
 dotnet test Prizma.sln --configuration Release
-./scripts/Build-Release.ps1 -Version 1.0.1
+./scripts/Build-Release.ps1 -Version 1.2.0
 ```
 
 Paketleme betiği yalnız resmî WinDivert `v2.2.2` arşivini indirir ve sabit `63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15` SHA-256 özetiyle doğrular. Self-contained `win-x64` çıktı `artifacts/release/` altında oluşturulur.
